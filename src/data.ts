@@ -12,6 +12,7 @@ export type Cattle = {
   vaccination: string
   seller: string
   phone: string
+  sellerVerified?: boolean
   image: string
   description: string
 }
@@ -43,6 +44,7 @@ export const cattle: Cattle[] = [
     seller: 'Nimal Perera',
     phone: '+94 77 123 4567',
     image: '/cattle/jersey-close.jpg',
+    sellerVerified: true,
     description: 'A calm, hand-milked Jersey cross that has calved twice and settles easily in the shed. Steady at 15 litres a day on a grass and concentrate ration, and used to being handled around the family.',
   },
   {
@@ -60,6 +62,7 @@ export const cattle: Cattle[] = [
     seller: 'S. Rajendran',
     phone: '+94 76 908 2210',
     image: '/cattle/friesian-field.jpg',
+    sellerVerified: true,
     description: 'Our highest yielder this season, grass-fed on up-country pasture and machine-milked morning and evening. Health records and AI certificates are available for inspection.',
   },
   {
@@ -77,6 +80,7 @@ export const cattle: Cattle[] = [
     seller: 'Chaminda Bandara',
     phone: '+94 71 445 3390',
     image: '/cattle/ayrshire-profile.jpg',
+    sellerVerified: true,
     description: 'Young Ayrshire in her second lactation, gentle with strangers and easy to lead. Well suited to a smallholder herd of five to ten animals.',
   },
   {
@@ -94,6 +98,7 @@ export const cattle: Cattle[] = [
     seller: 'Anoma Kumari',
     phone: '+94 77 662 1184',
     image: '/cattle/jersey-herd.jpg',
+    sellerVerified: true,
     description: 'Bred from our own herd and raised on the same pasture she grazes today. Reliable in the shed, quiet on the halter, and due for her next vaccination round this month.',
   },
   {
@@ -111,6 +116,7 @@ export const cattle: Cattle[] = [
     seller: 'A. H. Fuard',
     phone: '+94 75 330 7742',
     image: '/cattle/jersey-barn.jpg',
+    sellerVerified: true,
     description: 'An older cow with a settled temperament and an even production curve across the year. Ideal as a first animal for a family starting a home dairy.',
   },
   {
@@ -128,6 +134,7 @@ export const cattle: Cattle[] = [
     seller: 'Dilrukshi Fernando',
     phone: '+94 72 815 6620',
     image: '/cattle/jersey-profile.jpg',
+    sellerVerified: true,
     description: 'Compact frame, good udder placement and a strong appetite for fodder. Milked by hand at 5.30am and 4pm, with a clean mastitis history.',
   },
   {
@@ -145,6 +152,7 @@ export const cattle: Cattle[] = [
     seller: 'M. I. Sameer',
     phone: '+94 71 220 5587',
     image: '/cattle/sahiwal-red.jpg',
+    sellerVerified: true,
     description: 'Hardy Sahiwal that handles heat and dry-season grazing well. A sensible choice for a farm in the dry zone where fodder is not always plenty.',
   },
   {
@@ -162,6 +170,7 @@ export const cattle: Cattle[] = [
     seller: 'W. M. Herath',
     phone: '+94 77 401 2298',
     image: '/cattle/local-brown.jpg',
+    sellerVerified: true,
     description: 'Village-bred local cross that lives on crop residue and roadside grazing without extra concentrate. Disease-resistant and used to open grazing.',
   },
   {
@@ -179,6 +188,7 @@ export const cattle: Cattle[] = [
     seller: 'K. P. Sirisena',
     phone: '+94 76 118 4435',
     image: '/cattle/local-red.jpg',
+    sellerVerified: true,
     description: 'Raised on a mixed farm with goats and poultry, so she is used to company and easy to move. Currently giving eight litres on home-grown fodder.',
   },
 ]

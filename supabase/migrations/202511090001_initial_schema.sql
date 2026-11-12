@@ -160,7 +160,7 @@ alter table public.notifications enable row level security;
 
 create policy "public can view approved listings" on public.cow_listings for select using (listing_status = 'approved' or seller_id = auth.uid() or field_agent_id = auth.uid() or public.current_role() = 'admin');
 create policy "users and field agents create listings" on public.cow_listings for insert with check (((seller_id = auth.uid()) and public.current_role() in ('buyer', 'seller')) or ((field_agent_id = auth.uid()) and public.current_role() = 'field_agent'));
-create policy "owners update listings" on public.cow_listings for update using ((seller_id = auth.uid() or field_agent_id = auth.uid()) and listing_status in ('draft','pending','rejected')) or public.current_role() = 'admin' with check (public.current_role() = 'admin' or listing_status <> 'approved');
+create policy "owners update listings" on public.cow_listings for update using (((seller_id = auth.uid() or field_agent_id = auth.uid()) and listing_status in ('draft','pending','rejected')) or public.current_role() = 'admin') with check (public.current_role() = 'admin' or listing_status <> 'approved');
 create policy "admins delete listings" on public.cow_listings for delete using (public.current_role() = 'admin');
 create policy "users view relevant profiles" on public.profiles for select using (id = auth.uid() or public.current_role() = 'admin' or exists (select 1 from public.cow_listings l where l.seller_id = profiles.id and l.listing_status = 'approved'));
 create policy "users update own profile" on public.profiles for update using (id = auth.uid()) with check (id = auth.uid() and role = (select role from public.profiles where id = auth.uid()));
@@ -187,4 +187,4 @@ using (bucket_id = 'cattle-images');
 create policy "listing owners upload cattle images" on storage.objects for insert
 with check (bucket_id = 'cattle-images' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "listing owners delete cattle images" on storage.objects for delete
-using (bucket_id = 'cattle-images' and owner_id = auth.uid()::text);
+using (bucket_id = 'cattle-images' and (storage.foldername(name))[1] = auth.uid()::text);

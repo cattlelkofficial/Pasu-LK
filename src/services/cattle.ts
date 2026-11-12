@@ -19,12 +19,14 @@ type ListingRow = {
   seller?: SellerProfile | SellerProfile[] | null
 }
 
-type SellerProfile = { full_name: string | null; phone_number: string | null }
+type SellerProfile = { full_name: string | null; is_verified: boolean | null }
 
 // cow_listings points at profiles twice (seller_id and field_agent_id), so the
 // seller embed has to name the foreign key or PostgREST rejects the query as
-// ambiguous. Only the seller's name and phone are needed by the listing card.
-const LISTING_COLUMNS = 'id,title,breed,gender,estimated_age_months,asking_price_lkr,daily_yield_liters,district,city,description,health_condition,vaccination_status,cow_images(image_url,is_primary,display_order),seller:profiles!cow_listings_seller_id_fkey(full_name,phone_number)'
+// ambiguous. The public catalogue carries the seller's public name and
+// verification flag only: the phone number is fetched separately, and only for
+// the listing's owner or an administrator.
+const LISTING_COLUMNS = 'id,title,breed,gender,estimated_age_months,asking_price_lkr,daily_yield_liters,district,city,description,health_condition,vaccination_status,cow_images(image_url,is_primary,display_order),seller:profiles!cow_listings_seller_id_fkey(full_name,is_verified)'
 
 function toCattle(row: ListingRow): Cattle {
   const seller = Array.isArray(row.seller) ? row.seller[0] : row.seller
@@ -42,10 +44,25 @@ function toCattle(row: ListingRow): Cattle {
     health: row.health_condition,
     vaccination: row.vaccination_status,
     seller: seller?.full_name?.trim() || 'Pasu seller',
-    phone: seller?.phone_number?.trim() || '',
+    phone: '',
+    sellerVerified: Boolean(seller?.is_verified),
     image: image || '',
     description: row.description,
   }
+}
+
+export type SellerContact = { name: string; phone: string }
+
+// The seller's phone number is deliberately absent from the public catalogue.
+// This calls a security-definer function that only returns a row when the caller
+// owns the listing or is an administrator, so nobody else can read the number.
+export async function fetchSellerContact(cowId: string): Promise<SellerContact | null> {
+  if (!supabase || !cowId) return null
+  const { data, error } = await supabase.rpc('seller_contact', { target_listing: cowId })
+  if (error) throw error
+  const row = (Array.isArray(data) ? data[0] : data) as { full_name: string | null; phone_number: string | null } | undefined
+  if (!row?.phone_number) return null
+  return { name: row.full_name?.trim() || '', phone: row.phone_number.trim() }
 }
 
 export async function fetchApprovedCattle(): Promise<Cattle[] | null> {

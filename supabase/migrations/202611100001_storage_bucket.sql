@@ -7,6 +7,9 @@ insert into storage.buckets (id, name, public)
 values ('cattle-images', 'cattle-images', true)
 on conflict (id) do update set public = true;
 
+drop policy if exists "public can view cattle images" on storage.objects;
+drop policy if exists "listing owners upload cattle images" on storage.objects;
+drop policy if exists "listing owners delete cattle images" on storage.objects;
 drop policy if exists "cattle images are public" on storage.objects;
 create policy "cattle images are public" on storage.objects
   for select using (bucket_id = 'cattle-images');

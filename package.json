@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "db:check": "node supabase/tests/run_local_schema.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",

@@ -167,7 +167,7 @@ alter table public.notifications enable row level security;
 
 create policy "public can view approved listings" on public.cow_listings for select using (listing_status = 'approved' or seller_id = auth.uid() or field_agent_id = auth.uid() or public.current_role() = 'admin');
 create policy "users and field agents create listings" on public.cow_listings for insert with check (((seller_id = auth.uid()) and public.current_role() in ('buyer', 'seller')) or ((field_agent_id = auth.uid()) and public.current_role() = 'field_agent'));
-create policy "owners update listings" on public.cow_listings for update using ((seller_id = auth.uid() or field_agent_id = auth.uid()) and listing_status in ('draft','pending','rejected')) or public.current_role() = 'admin' with check (public.current_role() = 'admin' or listing_status <> 'approved');
+create policy "owners update listings" on public.cow_listings for update using (((seller_id = auth.uid() or field_agent_id = auth.uid()) and listing_status in ('draft','pending','rejected')) or public.current_role() = 'admin') with check (public.current_role() = 'admin' or listing_status <> 'approved');
 create policy "admins delete listings" on public.cow_listings for delete using (public.current_role() = 'admin');
 create policy "users view relevant profiles" on public.profiles for select using (id = auth.uid() or public.current_role() = 'admin' or exists (select 1 from public.cow_listings l where l.seller_id = profiles.id and l.listing_status = 'approved'));
 create policy "users update own profile" on public.profiles for update using (id = auth.uid()) with check (id = auth.uid() and role = (select role from public.profiles where id = auth.uid()));
@@ -194,7 +194,7 @@ using (bucket_id = 'cattle-images');
 create policy "listing owners upload cattle images" on storage.objects for insert
 with check (bucket_id = 'cattle-images' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "listing owners delete cattle images" on storage.objects for delete
-using (bucket_id = 'cattle-images' and owner_id = auth.uid()::text);
+using (bucket_id = 'cattle-images' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- ===========================================================
 -- 202511090002_shared_marketplace_accounts.sql
@@ -247,13 +247,11 @@ drop type public.legacy_user_role;
 
 update public.profiles set email = '' where email is null;
 alter table public.profiles alter column email set not null;
-alter table public.profiles add constraint profiles_required_identity check (
-  char_length(trim(full_name)) > 0 and
-  char_length(trim(phone_number)) > 0 and
-  char_length(trim(email)) > 3 and
-  district is not null and char_length(trim(district)) > 0 and
-  city is not null and char_length(trim(city)) > 0
-) not valid;
+-- Profile completion is enforced by public.profile_is_complete() inside the
+-- listing-creation policy, not by a table constraint: handle_new_user() inserts
+-- a blank profile at sign-up, and a check constraint (even a NOT VALID one,
+-- which still governs new rows) makes every registration fail with
+-- "Database error saving new user".
 
 create or replace function public.current_role() returns public.user_role
 language sql stable security definer set search_path = public as $$
@@ -736,6 +734,9 @@ insert into storage.buckets (id, name, public)
 values ('cattle-images', 'cattle-images', true)
 on conflict (id) do update set public = true;
 
+drop policy if exists "public can view cattle images" on storage.objects;
+drop policy if exists "listing owners upload cattle images" on storage.objects;
+drop policy if exists "listing owners delete cattle images" on storage.objects;
 drop policy if exists "cattle images are public" on storage.objects;
 create policy "cattle images are public" on storage.objects
   for select using (bucket_id = 'cattle-images');
@@ -754,3 +755,31 @@ drop policy if exists "sellers delete own cattle images" on storage.objects;
 create policy "sellers delete own cattle images" on storage.objects
   for delete to authenticated
   using (bucket_id = 'cattle-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ===========================================================
+-- 202611100002_seller_contact.sql
+-- ===========================================================
+-- Seller contact details.
+--
+-- The public catalogue shows a seller's name and whether they are verified, but
+-- never their phone number. Phone numbers stay in public.profiles and are read
+-- only through this function, which returns a row for the listing's seller or an
+-- administrator and nothing at all for everyone else. Callers cannot tell the
+-- difference between "not allowed" and "no number", which is the point.
+
+create or replace function public.seller_contact(target_listing uuid)
+returns table (full_name text, phone_number text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.full_name, p.phone_number
+  from public.cow_listings l
+  join public.profiles p on p.id = l.seller_id
+  where l.id = target_listing
+    and (l.seller_id = auth.uid() or public.admin_guard())
+$$;
+
+revoke all on function public.seller_contact(uuid) from public;
+grant execute on function public.seller_contact(uuid) to authenticated;

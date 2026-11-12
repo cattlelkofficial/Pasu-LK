@@ -28,7 +28,7 @@ Approved listings open a private conversation inside the dashboard. Messages, im
 
 Schedule the `process-unanswered-messages` Edge Function from a trusted server-side scheduler (for example, Supabase Cron invoking the function every minute). The function checks each recipient's configured timeout, availability, and AI settings before it writes an idempotent, clearly labelled AI message. Configure `ai_assistant_enabled` and `ai_auto_reply_enabled` from the dashboard; human takeover disables both settings.
 
-The migration enables RLS on every protected table, creates the profile-on-signup trigger, prevents users from changing their role, and only exposes approved listings publicly. The service-role key must never be placed in frontend environment variables.
+The migration enables RLS on every protected table, creates the profile-on-signup trigger, prevents users from changing their role, and only exposes approved listings publicly. Seller phone numbers never reach the public catalogue: the listing query reads only the seller's name and verification flag, and numbers come from `public.seller_contact()`, which answers for the listing's owner or an administrator and returns nothing for everyone else. The service-role key must never be placed in frontend environment variables.
 
 ## Checks
 
@@ -56,3 +56,13 @@ The preview catalogue uses freely licensed photographs from Wikimedia Commons, r
 | `public/cattle/local-brown.jpg` | Ebaran | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File%3ADomestic_cattle%20breed%20-%20Sri%20Lanka.jpg |
 | `public/cattle/local-red.jpg` | Ushani Thennakoon | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File%3ASri_Lankan%20Cattle.jpg |
 | `public/cattle/sahiwal-red.jpg` | Pavanaja | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File%3ASahiwala_01.JPG |
+
+## Local database check
+
+`supabase/APPLY_ALL.sql` can be verified offline before it is pasted into a project:
+
+```bash
+npm run db:check
+```
+
+The script applies every migration, in order and then again as the single combined file, to a real PostgreSQL running locally (PGlite) with stand-ins for the Supabase `auth` and `storage` schemas, the `anon`/`authenticated` roles and the `supabase_realtime` publication. It then asserts that the tables, RLS policies, storage bucket and functions exist, exercises the sign-up trigger, checks the first-admin promotion statement, and proves that `seller_contact()` returns a phone number only to the listing's owner or an administrator.

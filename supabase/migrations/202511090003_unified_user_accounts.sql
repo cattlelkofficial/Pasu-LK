@@ -28,13 +28,11 @@ drop type public.legacy_user_role;
 
 update public.profiles set email = '' where email is null;
 alter table public.profiles alter column email set not null;
-alter table public.profiles add constraint profiles_required_identity check (
-  char_length(trim(full_name)) > 0 and
-  char_length(trim(phone_number)) > 0 and
-  char_length(trim(email)) > 3 and
-  district is not null and char_length(trim(district)) > 0 and
-  city is not null and char_length(trim(city)) > 0
-) not valid;
+-- Profile completion is enforced by public.profile_is_complete() inside the
+-- listing-creation policy, not by a table constraint: handle_new_user() inserts
+-- a blank profile at sign-up, and a check constraint (even a NOT VALID one,
+-- which still governs new rows) makes every registration fail with
+-- "Database error saving new user".
 
 create or replace function public.current_role() returns public.user_role
 language sql stable security definer set search_path = public as $$
