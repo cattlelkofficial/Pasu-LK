@@ -821,8 +821,16 @@ select { cursor:pointer }
 /* Skeleton shimmer (the Lightswind stylesheet is not imported in full). */
 @keyframes shimmer { from { transform:translateX(-100%) } to { transform:translateX(100%) } }
 
-/* The scroll area caps its own height, so let the inner scroller inherit it. */
-.dashboard-nav-scroll > div { max-height:inherit; height:auto }
+/* The nav scroll area takes the space the flex column leaves it. */
+.dashboard-nav-scroll > div { height:100% }
+
+/* Desktop: the sidebar is exactly one viewport tall, so the nav can flex. */
+@media(min-width:901px) {
+  .dashboard-sidebar { height:100vh; position:sticky; top:0 }
+}
+
+/* Tables scroll inside their ScrollArea rather than in a second nested scroller. */
+.data-table-scroll { padding:0 }
 
 /* Site-wide scrollbar in the Pasu palette. */
 html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track)) }
