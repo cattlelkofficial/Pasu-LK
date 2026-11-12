@@ -765,3 +765,65 @@ select { cursor:pointer }
 .verification-form textarea { min-height:110px; padding:12px; border:1px solid var(--line); background:#fff; font:inherit; font-weight:400; resize:vertical }
 .verification-form textarea:focus { outline:none; border-color:var(--forest); box-shadow:0 0 0 3px rgba(33,69,53,.1) }
 .verification-form .button { align-self:flex-start }
+
+/* ------------------------------------------------------------------
+   Motion layer: entrance, hover and press feedback. Palette, spacing
+   and layout are untouched, and everything stops for reduced motion.
+   ------------------------------------------------------------------ */
+@keyframes page-in { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
+@keyframes rise-in { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
+
+.page-transition { animation:page-in .42s cubic-bezier(.22,.68,.32,1) both }
+
+.cattle-card, .dashboard-stat, .dashboard-panel, .dashboard-cattle-card, .approval-card, .verification-row {
+  animation:rise-in .5s cubic-bezier(.22,.68,.32,1) both;
+  transition:transform .25s cubic-bezier(.22,.68,.32,1), box-shadow .25s, border-color .25s
+}
+.cattle-card:nth-child(2), .dashboard-stat:nth-child(2), .verification-row:nth-child(2) { animation-delay:.05s }
+.cattle-card:nth-child(3), .dashboard-stat:nth-child(3), .verification-row:nth-child(3) { animation-delay:.1s }
+.cattle-card:nth-child(4), .dashboard-stat:nth-child(4), .verification-row:nth-child(4) { animation-delay:.15s }
+.cattle-card:nth-child(5), .dashboard-stat:nth-child(5) { animation-delay:.2s }
+.cattle-card:nth-child(6), .dashboard-stat:nth-child(6) { animation-delay:.25s }
+.cattle-card:nth-child(n+7), .dashboard-stat:nth-child(n+7), .verification-row:nth-child(n+5) { animation-delay:.28s }
+
+.cattle-card:hover, .dashboard-stat:hover, .dashboard-cattle-card:hover, .approval-card:hover {
+  transform:translateY(-4px);
+  box-shadow:0 14px 30px rgba(23,35,29,.12)
+}
+
+.card-image-wrap { overflow:hidden }
+.card-image-wrap img, .hero-visual > img, .detail-image { transition:transform .7s cubic-bezier(.22,.68,.32,1) }
+.cattle-card:hover .card-image-wrap img, .dashboard-cattle-card:hover .card-image-wrap img { transform:scale(1.05) }
+.hero-visual:hover > img { transform:scale(1.02) }
+.detail-image:hover { transform:scale(1.015) }
+
+.button { transition:transform .2s cubic-bezier(.22,.68,.32,1), background .2s, color .2s, box-shadow .2s }
+.button:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(23,35,29,.12) }
+.button:active { transform:translateY(0) scale(.985); box-shadow:none }
+.button:disabled, .button[disabled] { transform:none; box-shadow:none }
+
+.nav-links a { transition:color .2s, background-color .2s }
+.nav-links a:hover, .nav-links a.active { color:var(--forest) }
+.status-pill, .verified-badge, .save-button, .more-button, .notification-button { transition:background .2s, color .2s, transform .2s, box-shadow .2s }
+.dashboard-sidebar { transition:transform .3s cubic-bezier(.22,.68,.32,1) }
+.data-table tbody tr { transition:background .25s, box-shadow .25s }
+.data-table tbody tr:hover { box-shadow:inset 3px 0 var(--lime) }
+
+@media(prefers-reduced-motion:reduce) {
+  .page-transition, .cattle-card, .dashboard-stat, .dashboard-panel, .dashboard-cattle-card,
+  .approval-card, .verification-row { animation:none }
+  .cattle-card:hover, .dashboard-stat:hover, .dashboard-cattle-card:hover, .approval-card:hover,
+  .button:hover, .button:active { transform:none }
+  .card-image-wrap img, .hero-visual > img, .detail-image { transition:none; transform:none }
+  .dashboard-sidebar { transition:none }
+}
+
+/* The utility layer sets transition-colors on these buttons with equal
+   specificity, so state the motion on a more specific selector. */
+.button.button { transition:transform .2s cubic-bezier(.22,.68,.32,1), background .2s, color .2s, box-shadow .2s }
+.button.button:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(23,35,29,.12) }
+.button.button:active { transform:translateY(0) scale(.985); box-shadow:none }
+.button.button:disabled, .button.button[disabled] { transform:none; box-shadow:none }
+@media(prefers-reduced-motion:reduce) {
+  .button.button:hover, .button.button:active { transform:none }
+}

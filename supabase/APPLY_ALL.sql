@@ -5,7 +5,8 @@
 -- ===========================================================
 -- 202511090001_initial_schema.sql
 -- ===========================================================
-create extension if not exists "pgcrypto";
+-- No extension needed: gen_random_uuid() is built into PostgreSQL 13+, so this
+-- schema applies to any modern project without pgcrypto.
 
 create type public.user_role as enum ('buyer', 'seller', 'field_agent', 'admin');
 create type public.listing_status as enum ('draft', 'pending', 'approved', 'rejected', 'sold', 'inactive');

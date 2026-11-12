@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "db:check": "node supabase/tests/run_local_schema.mjs",
+    "db:check": "node supabase/tests/run_local_schema.mjs && node supabase/tests/run_setup_idempotent.mjs",
     "supabase:setup": "node scripts/setup-supabase.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:setup-check": "node supabase/tests/run_setup_idempotent.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.5",

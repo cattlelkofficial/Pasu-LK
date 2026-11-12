@@ -9,46 +9,12 @@
 //
 import { PGlite } from '@electric-sql/pglite'
 import { readdirSync, readFileSync } from 'node:fs'
+import { bootstrap } from './supabase_stubs.mjs'
 
 const SELLER = '11111111-1111-1111-1111-111111111111'
 const STRANGER = '33333333-3333-3333-3333-333333333333'
 const ADMIN = '44444444-4444-4444-4444-444444444444'
 const LISTING = '22222222-2222-2222-2222-222222222222'
-
-const bootstrap = `
-create role anon noinherit;
-create role authenticated noinherit;
-
-create schema auth;
-create table auth.users (
-  id uuid primary key default gen_random_uuid(),
-  email text,
-  phone text,
-  raw_user_meta_data jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
-
-create schema storage;
-create table storage.buckets (
-  id text primary key,
-  name text not null,
-  public boolean not null default false,
-  created_at timestamptz not null default now()
-);
-create table storage.objects (
-  id uuid primary key default gen_random_uuid(),
-  bucket_id text,
-  name text,
-  owner uuid,
-  created_at timestamptz not null default now()
-);
-create function storage.foldername(name text) returns text[] language sql immutable as $$
-  select (string_to_array(name, '/'))[1 : array_length(string_to_array(name, '/'), 1) - 1]
-$$;
-
-create publication supabase_realtime;
-`
 
 const schema = readFileSync(new URL('../APPLY_ALL.sql', import.meta.url), 'utf8')
 
@@ -74,19 +40,12 @@ console.log('1. Supabase stand-ins')
 await db.exec(bootstrap)
 pass('auth + storage schemas, anon/authenticated roles, supabase_realtime publication')
 
-// pgcrypto is not bundled with PGlite; it ships with Supabase. gen_random_uuid()
-// is core in PostgreSQL 13+, so nothing in the schema actually depends on it.
-const pgcryptoStubbed = Number((await one("select count(*) from pg_available_extensions where name = 'pgcrypto'")).count) === 0
-const strip = text => pgcryptoStubbed
-  ? text.replace(/create extension if not exists "pgcrypto";/i, '-- pgcrypto omitted: core gen_random_uuid() is used')
-  : text
-
 console.log('\n2. Applying migrations in order')
 const migrationDir = new URL('../migrations/', import.meta.url)
 const migrationFiles = readdirSync(migrationDir).filter(name => name.endsWith('.sql')).sort()
 for (const file of migrationFiles) {
   try {
-    await db.exec(strip(readFileSync(new URL(file, migrationDir), 'utf8')))
+    await db.exec(readFileSync(new URL(file, migrationDir), 'utf8'))
     pass(file)
   } catch (error) {
     fail(file, error.message)
@@ -98,7 +57,7 @@ const bundle = new PGlite()
 await bundle.waitReady
 try {
   await bundle.exec(bootstrap)
-  await bundle.exec(strip(schema))
+  await bundle.exec(schema)
   pass('supabase/APPLY_ALL.sql applies in a single run')
 } catch (error) {
   fail('supabase/APPLY_ALL.sql as one file', error.message)
@@ -204,7 +163,39 @@ await db.exec(`create or replace function auth.uid() returns uuid language sql s
 await db.exec(`select public.admin_set_seller_verification('${SELLER}', true)`)
 check('the direct toggle also sets the flag', (await count(`select count(*) from public.profiles where id = '${SELLER}' and is_verified`)) === 1)
 
+console.log('\n9. Row level security on verification requests')
+await db.exec('grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated; grant usage on schema public to authenticated; grant select, insert, update, delete on all tables in schema public to authenticated;')
+const setUser = async (userId) => db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$ select '${userId}'::uuid $$`)
+const asRole = async (userId, sql) => {
+  await setUser(userId)
+  await db.exec('set role authenticated')
+  try {
+    return await db.query(sql)
+  } finally {
+    await db.exec('reset role')
+  }
+}
+const denied = async (userId, sql) => {
+  try {
+    await asRole(userId, sql)
+    return false
+  } catch {
+    return true
+  }
+}
+// The stranger has no pending request of their own, so both writes are attempts
+// to act on somebody else's account and must be refused by the policies.
+check('a seller cannot request verification for someone else', await denied(STRANGER, `insert into public.seller_verification_requests (user_id, status) values ('${SELLER}', 'pending')`))
+check('a seller cannot insert an already-approved request', await denied(SELLER, `insert into public.seller_verification_requests (user_id, status) values ('${SELLER}', 'approved')`))
+const ownInsert = await asRole(SELLER, `insert into public.seller_verification_requests (user_id, status, documents) values ('${SELLER}', 'pending', '[]'::jsonb) returning id`)
+check('a seller can submit their own pending request', ownInsert.rows.length === 1)
+const otherRows = await asRole(STRANGER, `select count(*)::int as n from public.seller_verification_requests`)
+check('another seller reads none of those rows', Number(otherRows.rows[0].n) === 0, `${otherRows.rows[0].n} rows`)
+const foreignRows = await asRole(SELLER, `select count(*)::int as n from public.seller_verification_requests where user_id <> '${SELLER}'`)
+check('a seller reads only their own rows', Number(foreignRows.rows[0].n) === 0)
+const adminRows = await asRole(ADMIN, `select count(*)::int as n from public.seller_verification_requests`)
+check('an administrator still sees the whole queue', Number(adminRows.rows[0].n) >= 2, `${adminRows.rows[0].n} rows`)
+
 console.log(`\n${failures === 0 ? 'PASS' : 'FAIL'} — ${failures} failure(s)`)
-if (pgcryptoStubbed) console.log('note: pgcrypto was skipped locally; Supabase enables it, and gen_random_uuid() is core on PostgreSQL 13+')
 await db.close()
 process.exit(failures === 0 ? 0 : 1)
