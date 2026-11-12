@@ -41,3 +41,19 @@ npm run lint
 ## Deploy
 
 Build with `npm run build` and deploy the `dist` directory to Vercel. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as Vercel environment variables. Configure the Supabase Auth redirect URL to the deployed domain.
+
+## Preview photos
+
+The preview catalogue uses freely licensed photographs from Wikimedia Commons, resized for the web. They illustrate the sample listings and are not photos of the animals described.
+
+| File | Photographer | Licence | Source |
+| --- | --- | --- | --- |
+| `public/cattle/jersey-barn.jpg` | Jennifer Dickert from Dover, NH, USA | CC BY 2.0 | https://commons.wikimedia.org/wiki/File%3ACute_Jersey%20Cow.jpg |
+| `public/cattle/jersey-close.jpg` | ITookSomePhotos | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File%3AFriendly_Jersey%20cow%2C%20near%20Brighstone%2C%20Isle%20of%20Wight%2C%20England.jpg |
+| `public/cattle/jersey-herd.jpg` | BartLaridon | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File%3AA_group%20of%20Jersey%20cows.JPG |
+| `public/cattle/jersey-profile.jpg` | Missvain | CC BY 4.0 | https://commons.wikimedia.org/wiki/File%3A2024_Sonoma-Marin%20Fair%20-%20Sarah%20Stierch%2009.jpg |
+| `public/cattle/ayrshire-profile.jpg` | Sergei S. Scurfield | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File%3AAyrshire_cattle.JPG |
+| `public/cattle/friesian-field.jpg` | Jeff the quiet | CC0 | https://commons.wikimedia.org/wiki/File%3AHixon_Wisconsin%20cows.jpg |
+| `public/cattle/local-brown.jpg` | Ebaran | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File%3ADomestic_cattle%20breed%20-%20Sri%20Lanka.jpg |
+| `public/cattle/local-red.jpg` | Ushani Thennakoon | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File%3ASri_Lankan%20Cattle.jpg |
+| `public/cattle/sahiwal-red.jpg` | Pavanaja | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File%3ASahiwala_01.JPG |
