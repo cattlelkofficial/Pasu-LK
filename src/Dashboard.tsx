@@ -4,7 +4,7 @@ import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
 import { Chart, registerables } from 'chart.js'
 import {
-  ArrowUpRight, BarChart3, Bell, Check, ChevronDown, CircleUserRound, ClipboardCheck,
+  ArrowUpRight, BadgeCheck, BarChart3, Bell, Check, ChevronDown, CircleUserRound, ClipboardCheck,
   FilePlus2, Heart, LayoutDashboard, Leaf, LogOut, Menu, MessageCircle,
   Search, Settings, ShieldCheck, Store, Users as UsersIcon, X
 } from 'lucide-react'
@@ -14,7 +14,8 @@ import { supabase } from './lib/supabase'
 import { createListing, toggleFavourite } from './services/marketplace'
 import { getDashboardSummary, getMyEnquiries, getMyListings, getMyTransactions, getNotifications, getSavedListings, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, type DashboardSummary, type ListingRow } from './services/dashboard'
 import { searchApprovedCattle } from './services/cattle'
-import { getAdminListings, getAdminOverview, getAdminTransactions, getAdminUsers, getCommissionSettings, reviewListing, setSellerVerification, setUserSuspension, type AdminListing } from './services/admin'
+import { getAdminListings, getAdminOverview, getAdminTransactions, getAdminUsers, getCommissionSettings, reviewListing, reviewSellerVerification, setSellerVerification, setUserSuspension, type AdminListing } from './services/admin'
+import { getMyVerificationState, listVerificationRequests, requestVerification, sellerOf, verificationNote, type MyVerificationState, type VerificationRequest } from './services/verification'
 import { SearchableDropdown } from './components/FormControls'
 import {
   blockConversation, broadcastTyping, createConversation, getAttachmentUrl, getCurrentUserId, getMessages, getUnreadCount, handoverConversation, listConversations,
@@ -33,6 +34,7 @@ const marketplaceMenu = [
     { label: 'My enquiries', path: '/dashboard/enquiries', icon: MessageCircle },
     { label: 'Messages', path: '/dashboard/messages', icon: MessageCircle },
     { label: 'Transactions', path: '/dashboard/transactions', icon: ClipboardCheck },
+    { label: 'Get verified', path: '/dashboard/verification', icon: BadgeCheck },
 ]
 
 const menu: Record<AccountRole, { label: string; path: string; icon: typeof LayoutDashboard }[]> = {
@@ -40,6 +42,7 @@ const menu: Record<AccountRole, { label: string; path: string; icon: typeof Layo
   admin: [
     { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Listing approvals', path: '/dashboard/approvals', icon: ClipboardCheck },
+    { label: 'Seller verification', path: '/dashboard/verifications', icon: BadgeCheck },
     { label: 'Cattle management', path: '/dashboard/listings', icon: Store },
     { label: 'User management', path: '/dashboard/users', icon: UsersIcon },
     { label: 'Transactions', path: '/dashboard/transactions', icon: BarChart3 },
@@ -337,6 +340,39 @@ function Commission() {
   return <><PageHeading eyebrow="Owner workspace" title="Keep the model transparent." />{error && <p className="form-error">{error}</p>}<div className="commission-layout"><section className="dashboard-panel"><div className="panel-heading"><div><p className="panel-kicker">Active commission brackets</p><h2>Rates shown at agreement</h2></div><span className="status-pill">Live</span></div>{rows.map(row => <div className="rate-row" key={String(row.id)}><span>{formatLkr(Number(row.minimum_price_lkr))} – {row.maximum_price_lkr ? formatLkr(Number(row.maximum_price_lkr)) : 'above'}</span><b>{String(row.commission_percentage)}%</b><span>{row.is_active ? 'Active' : 'Inactive'}</span></div>)}{!rows.length && <div className="empty-state"><Settings size={27} /><h3>No commission rules</h3><p>Configure commission rules in Supabase before using the transaction workflow.</p></div>}</section></div></>
 }
 
+function VerificationQueue() {
+  const [rows, setRows] = useState<VerificationRequest[]>([])
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState('')
+  useEffect(() => { listVerificationRequests('pending').then(setRows).catch(reason => setError(reason instanceof Error ? reason.message : 'Verification requests could not be loaded.')) }, [])
+  const decide = async (row: VerificationRequest, decision: 'approved' | 'rejected') => { const reason = decision === 'rejected' ? window.prompt('Reason for rejection') : undefined; if (decision === 'rejected' && !reason?.trim()) return; setBusy(row.id); try { await reviewSellerVerification(row.id, decision, reason || undefined); setRows(previous => previous.filter(item => item.id !== row.id)) } catch (issue) { setError(issue instanceof Error ? issue.message : 'Verification decision could not be saved.') } finally { setBusy('') } }
+  return <><PageHeading eyebrow="Seller verification" title="Trust, checked in person." /><div className="approval-notice"><BadgeCheck size={20} /><div><b>{rows.length} sellers waiting for verification</b><span>Approving sets the verified badge on every listing that seller owns.</span></div></div>{error && <p className="form-error">{error}</p>}<div className="dashboard-panel verification-list">{rows.length ? rows.map(row => { const seller = sellerOf(row); const note = verificationNote(row.documents); return <div className="verification-row" key={row.id}><span className="verification-avatar">{(seller?.full_name || 'P').slice(0, 1)}</span><div className="verification-body"><div className="verification-head"><b>{seller?.full_name || 'Unnamed seller'}</b><span className="status-pill pending">{seller?.is_verified ? 'Already verified' : 'Pending'}</span></div><small className="table-muted">{seller?.email || 'No email on file'} · {seller?.district || 'Unknown district'} · requested {new Date(row.created_at).toLocaleDateString('en-LK')}</small>{note && <p className="verification-note">{note}</p>}<div className="verification-actions"><button className="button button-dark table-action" disabled={busy === row.id} onClick={() => decide(row, 'approved')}>{busy === row.id ? 'Saving...' : 'Approve seller'}</button><button className="button button-light table-action" disabled={busy === row.id} onClick={() => decide(row, 'rejected')}>Reject</button></div></div></div> }) : <div className="empty-state"><Check size={27} /><h3>No requests waiting</h3><p>Sellers who ask to be verified will appear here.</p></div>}</div></>
+}
+
+function MyVerification() {
+  const [state, setState] = useState<MyVerificationState | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => { getMyVerificationState().then(setState).catch(reason => setError(reason instanceof Error ? reason.message : 'Your verification status could not be loaded.')).finally(() => setLoading(false)) }, [])
+  const submit = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(''); try { await requestVerification(note); setNote(''); setState(await getMyVerificationState()) } catch (issue) { setError(issue instanceof Error ? issue.message : 'Your request could not be sent.') } finally { setBusy(false) } }
+  const request = state?.request || null
+  const verified = Boolean(state?.verified) || request?.status === 'approved'
+  const pending = request?.status === 'pending' && !verified
+  const rejected = request?.status === 'rejected' && !verified
+  return <><PageHeading eyebrow="Seller verification" title="Get the verified badge." />
+    <p className="body-copy verification-intro">Verified sellers show a badge on every listing. The owner checks your details before approving, so buyers know the cattle and the person behind them are real.</p>
+    {error && <p className="form-error">{error}</p>}
+    {loading ? <div className="dashboard-panel verification-state"><ShieldCheck size={22} /><div><h2>Checking your status</h2><p>One moment.</p></div></div> : <>
+      {verified && <div className="dashboard-panel verification-state approved"><BadgeCheck size={22} /><div><h2>You are a verified seller</h2><p>Your listings carry the verified badge in the marketplace.</p></div></div>}
+      {request && pending && <div className="dashboard-panel verification-state pending"><ShieldCheck size={22} /><div><h2>Your request is under review</h2><p>Sent {new Date(request.created_at).toLocaleDateString('en-LK')}. The owner will approve or reject it.</p>{verificationNote(request.documents) && <p className="table-muted">{verificationNote(request.documents)}</p>}</div></div>}
+      {request && rejected && <div className="dashboard-panel verification-state rejected"><X size={22} /><div><h2>Your last request was not approved</h2><p>{request.rejection_reason || 'No reason was recorded.'}</p><p className="table-muted">You can send a new request once you have addressed it.</p></div></div>}
+      {!verified && !pending && <form className="dashboard-panel verification-form" onSubmit={submit}><div className="panel-heading"><div><p className="panel-kicker">Request verification</p><h2>Tell the owner what to check</h2></div></div><label>Anything we should know?<textarea value={note} onChange={event => setNote(event.target.value)} maxLength={500} placeholder="Farm name, veterinary records, years of experience, or the officer who can vouch for you." /></label><button className="button button-dark" disabled={busy}>{busy ? 'Sending...' : 'Request verification'}</button></form>}
+    </>}
+  </>
+}
+
 function Profile() {
   const account = getAccount()!
   const [saved, setSaved] = useState(false)
@@ -367,6 +403,8 @@ export function Dashboard() {
   let content: ReactNode = <Overview />
   if (path.includes('add-listing')) content = <AddListing />
   else if (path.includes('approvals')) content = admin ? <Approvals /> : <Overview />
+  else if (path.includes('verifications')) content = admin ? <VerificationQueue /> : <Overview />
+  else if (path.includes('verification')) content = <MyVerification />
   else if (path.includes('listings')) content = <Listings admin={admin} />
   else if (path.includes('browse')) content = <BrowseDashboard />
   else if (path.includes('saved')) content = <SavedDashboard />

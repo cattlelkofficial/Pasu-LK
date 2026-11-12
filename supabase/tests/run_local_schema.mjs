@@ -175,7 +175,15 @@ const admins = await count(`select count(*) from public.profiles where role = 'a
 check('promotion statement yields exactly one admin', admins === 1, `${admins} admins`)
 
 console.log('\n8. Seller verification sets the badge flag')
+check('seller request policies exist', (await count(`select count(*) from pg_policies where tablename = 'seller_verification_requests'`)) >= 3, 'admin policy plus seller insert and select')
 await db.exec(`insert into public.seller_verification_requests (id, user_id, status, documents) values ('55555555-5555-5555-5555-555555555555', '${SELLER}', 'pending', '[]'::jsonb)`)
+let duplicateRefused = false
+try {
+  await db.exec(`insert into public.seller_verification_requests (user_id, status) values ('${SELLER}', 'pending')`)
+} catch {
+  duplicateRefused = true
+}
+check('a seller cannot stack two pending requests', duplicateRefused)
 await db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$ select '${ADMIN}'::uuid $$`)
 await db.exec(`select public.admin_review_verification('55555555-5555-5555-5555-555555555555', 'approved', 'Papers checked')`)
 check('approving a request sets is_verified', (await count(`select count(*) from public.profiles where id = '${SELLER}' and is_verified`)) === 1)

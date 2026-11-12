@@ -742,3 +742,26 @@ select { cursor:pointer }
 
 /* Compact row action inside data tables */
 .data-table .table-action { padding:6px 10px; font-size:.78rem; margin-left:6px }
+
+/* Seller verification request flow */
+.verification-intro { max-width:62ch; margin-bottom:8px }
+.verification-list { padding:0 }
+.verification-row { display:flex; gap:16px; align-items:flex-start; padding:18px 20px; border-bottom:1px solid var(--line) }
+.verification-row:last-child { border-bottom:0 }
+.verification-avatar { display:flex; align-items:center; justify-content:center; width:44px; height:44px; flex:none; border-radius:50%; background:var(--cream); color:var(--forest); font-family:var(--serif); font-size:20px }
+.verification-body { flex:1; min-width:0 }
+.verification-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.verification-head b { font-size:1rem }
+.verification-note { margin:8px 0 0; padding-left:10px; border-left:2px solid var(--lime); color:var(--muted); font-size:.86rem }
+.verification-actions { display:flex; gap:8px; margin-top:12px }
+.verification-state { display:flex; gap:14px; align-items:flex-start; padding:22px; margin-bottom:18px }
+.verification-state h2 { margin:0 0 4px; font-size:1.15rem; font-family:var(--serif); font-weight:500 }
+.verification-state p { margin:0; color:var(--muted); font-size:.9rem }
+.verification-state svg { flex:none; color:var(--forest); margin-top:2px }
+.verification-state.pending, .verification-state.rejected { border-style:dashed }
+.verification-state.approved { border-left:3px solid var(--forest) }
+.verification-form { display:flex; flex-direction:column; gap:16px; padding:24px }
+.verification-form label { display:flex; flex-direction:column; gap:8px; font-size:.85rem; font-weight:600 }
+.verification-form textarea { min-height:110px; padding:12px; border:1px solid var(--line); background:#fff; font:inherit; font-weight:400; resize:vertical }
+.verification-form textarea:focus { outline:none; border-color:var(--forest); box-shadow:0 0 0 3px rgba(33,69,53,.1) }
+.verification-form .button { align-self:flex-start }

@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "db:check": "node supabase/tests/run_local_schema.mjs",
+    "supabase:setup": "node scripts/setup-supabase.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -57,6 +57,20 @@ The preview catalogue uses freely licensed photographs from Wikimedia Commons, r
 | `public/cattle/local-red.jpg` | Ushani Thennakoon | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File%3ASri_Lankan%20Cattle.jpg |
 | `public/cattle/sahiwal-red.jpg` | Pavanaja | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File%3ASahiwala_01.JPG |
 
+## One-command setup
+
+With a personal access token saved in `.supabase-token` (gitignored, one line):
+
+```bash
+npm run supabase:setup
+```
+
+It applies `supabase/APPLY_ALL.sql` to the project, verifies the tables, policies and storage bucket it created, then writes `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` into `.env.local`. Neither the token nor the key is ever printed. Use `npm run supabase:setup -- --dry-run` to see the resolved project and SQL size without sending anything. The project ref comes from `SUPABASE_PROJECT_REF`, a `.supabase-project` file, or the URL already in `.env.local`.
+
+## Seller verification
+
+Sellers ask for verification from **Get verified** in their dashboard, which submits a `seller_verification_requests` row with an optional note (a unique index allows one pending request per seller). Administrators answer in **Seller verification**, which calls `admin_review_verification()`; approving sets `profiles.is_verified` and with it the "Verified seller" badge on that seller's listings, and rejecting records a reason the seller sees before they can request again.
+
 ## Local database check
 
 `supabase/APPLY_ALL.sql` can be verified offline before it is pasted into a project:
