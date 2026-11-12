@@ -785,3 +785,49 @@ select { cursor:pointer }
   .text-link:hover svg, .district-list a:hover svg { transform:none }
   .dashboard-sidebar { transition:none }
 }
+
+/* ------------------------------------------------------------------
+   Lightswind components (scroll area, skeleton). The library ships its
+   own CSS variables; point them at the Pasu palette so scrollbars and
+   placeholders match the rest of the site.
+   ------------------------------------------------------------------ */
+:root {
+  --primary: 153 35% 20%;
+  --primary-foreground: #fff;
+  --background: 45 2% 95%;
+  --foreground: 153 21% 11%;
+  --scrollbar-thumb: 153 19% 45%;
+  --scrollbar-track: 45 25% 91%;
+  --scrollbar-hover: 153 35% 20%;
+}
+.dashboard-sidebar { --scrollbar-thumb: 88 35% 55%; --scrollbar-track: 153 30% 18% }
+
+.themed-scrollbar { scrollbar-width: thin; scrollbar-color: hsl(var(--scrollbar-thumb)) transparent }
+.themed-scrollbar::-webkit-scrollbar { width:8px; height:8px }
+.themed-scrollbar::-webkit-scrollbar-track { background:transparent }
+.themed-scrollbar::-webkit-scrollbar-thumb { background-color:hsl(var(--scrollbar-thumb)); border-radius:999px; border:2px solid transparent; background-clip:content-box }
+.themed-scrollbar::-webkit-scrollbar-thumb:hover { background-color:hsl(var(--scrollbar-hover)) }
+.themed-scrollbar::-webkit-scrollbar-corner { background:transparent }
+
+.lw-scrollbar-thumb { background-color:hsl(var(--scrollbar-thumb)) }
+.lw-scrollbar-thumb:hover { background-color:hsl(var(--scrollbar-hover)) }
+
+.dashboard-nav-scroll { flex:1 1 auto; min-height:0 }
+.dashboard-nav-scroll .dashboard-nav { padding-right:2px }
+
+.lw-skeleton { background-color:var(--cream); position:relative; overflow:hidden }
+.skeleton-gap { height:8px }
+
+/* Skeleton shimmer (the Lightswind stylesheet is not imported in full). */
+@keyframes shimmer { from { transform:translateX(-100%) } to { transform:translateX(100%) } }
+
+/* The scroll area caps its own height, so let the inner scroller inherit it. */
+.dashboard-nav-scroll > div { max-height:inherit; height:auto }
+
+/* Site-wide scrollbar in the Pasu palette. */
+html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track)) }
+::-webkit-scrollbar { width:10px; height:10px }
+::-webkit-scrollbar-track { background:hsl(var(--scrollbar-track)) }
+::-webkit-scrollbar-thumb { background-color:hsl(var(--scrollbar-thumb)); border-radius:999px; border:2px solid transparent; background-clip:content-box }
+::-webkit-scrollbar-thumb:hover { background-color:hsl(var(--scrollbar-hover)) }
+::-webkit-scrollbar-corner { background:transparent }

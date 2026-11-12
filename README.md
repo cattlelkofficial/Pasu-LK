@@ -57,6 +57,10 @@ The preview catalogue uses freely licensed photographs from Wikimedia Commons, r
 | `public/cattle/local-red.jpg` | Ushani Thennakoon | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File%3ASri_Lankan%20Cattle.jpg |
 | `public/cattle/sahiwal-red.jpg` | Pavanaja | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File%3ASahiwala_01.JPG |
 
+## UI components
+
+Interactive pieces come from [Lightswind](https://lightswind.com/components). The scroll area and skeleton loaders sit in `src/components/lightswind/` next to the existing badge, button and card, and the `@/` alias resolves to `src/` for them. Add more with `npx lightswind add <component>`. The library's full stylesheet is deliberately not imported — it resets body colours and ships ~18 kB of rules the site never uses — so `src/App.css` defines the palette-driven scrollbar and skeleton styles those components need.
+
 ## One-command setup
 
 With a personal access token saved in `.supabase-token` (gitignored, one line):
