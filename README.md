@@ -65,7 +65,7 @@ With a personal access token saved in `.supabase-token` (gitignored, one line):
 npm run supabase:setup
 ```
 
-It applies `supabase/APPLY_ALL.sql` to the project, verifies the tables, policies and storage bucket it created, then writes `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` into `.env.local`. Neither the token nor the key is ever printed. Use `npm run supabase:setup -- --dry-run` to see the resolved project and SQL size without sending anything. The project ref comes from `SUPABASE_PROJECT_REF`, a `.supabase-project` file, or the URL already in `.env.local`.
+It applies only the migrations that are still pending — applied files are recorded in `public.pasu_setup_migrations`, so running it again on a finished project applies nothing and just re-checks and refreshes `.env.local`. If the schema was created by pasting `APPLY_ALL.sql`, a complete schema is adopted automatically; a partial one stops the run so nothing is applied twice (`--adopt` records it anyway). It then verifies the tables, policies and storage bucket, and writes `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` into `.env.local`. Neither the token nor the key is ever printed. Use `npm run supabase:setup -- --dry-run` to see the resolved project and SQL size without sending anything. The project ref comes from `SUPABASE_PROJECT_REF`, a `.supabase-project` file, or the URL already in `.env.local`.
 
 ## Seller verification
 
@@ -79,4 +79,4 @@ Sellers ask for verification from **Get verified** in their dashboard, which sub
 npm run db:check
 ```
 
-The script applies every migration, in order and then again as the single combined file, to a real PostgreSQL running locally (PGlite) with stand-ins for the Supabase `auth` and `storage` schemas, the `anon`/`authenticated` roles and the `supabase_realtime` publication. It then asserts that the tables, RLS policies, storage bucket and functions exist, exercises the sign-up trigger, checks the first-admin promotion statement, and proves that `seller_contact()` returns a phone number only to the listing's owner or an administrator.
+The script applies every migration, in order and then again as the single combined file, to a real PostgreSQL running locally (PGlite) with stand-ins for the Supabase `auth` and `storage` schemas, the `anon`/`authenticated` roles and the `supabase_realtime` publication. It then asserts that the tables, RLS policies, storage bucket and functions exist, exercises the sign-up trigger, checks the first-admin promotion statement, proves that `seller_contact()` returns a phone number only to the listing's owner or an administrator, and switches role to prove that a seller can neither write nor read another seller's verification request. `npm run db:check` also runs the setup idempotency test, which drives `scripts/setup-supabase.mjs` twice against a mock Management API backed by the same database.
