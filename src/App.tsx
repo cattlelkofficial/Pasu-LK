@@ -6,7 +6,7 @@ import {
   Heart, Leaf, Menu, MessageCircle, Search, ShieldCheck, SlidersHorizontal, X
 } from 'lucide-react'
 import './App.css'
-import { cattle, districts, formatLkr, type Cattle } from './data'
+import { cattle, districts, formatLkr, photoCredits, type Cattle } from './data'
 import { getAccount, saveAccount, syncSupabaseAccount } from './auth'
 import { Dashboard } from './Dashboard'
 import { supabase } from './lib/supabase'
@@ -45,7 +45,7 @@ function Footer() {
   return <footer className="footer"><div className="container footer-grid">
     <div><Logo /><p className="footer-copy">A clearer way to find the right cattle<br />for your dairy business.</p><span className="footer-note">Made for Sri Lankan farmers</span></div>
     <div><p className="footer-heading">Explore</p><Link to="/marketplace">Browse cattle</Link><Link to="/how-it-works">How it works</Link><Link to="/about">About Pasu</Link></div>
-    <div><p className="footer-heading">For your peace of mind</p><Link to="/privacy">Privacy policy</Link><Link to="/terms">Terms & conditions</Link><a href="mailto:hello@pasu.lk">Contact us</a></div>
+    <div><p className="footer-heading">For your peace of mind</p><Link to="/privacy">Privacy policy</Link><Link to="/terms">Terms & conditions</Link><Link to="/credits">Photo credits</Link><a href="mailto:hello@pasu.lk">Contact us</a></div>
     <div className="footer-contact"><p className="footer-heading">Have a question?</p><p>We’re here on weekdays,<br />8.30am–5.30pm.</p><a href="mailto:hello@pasu.lk">hello@pasu.lk <ArrowUpRight size={14} /></a></div>
   </div><div className="container footer-bottom"><span>© 2025 Pasu Marketplace</span><span>Colombo · Sri Lanka</span></div></footer>
 }
@@ -211,6 +211,19 @@ function Auth({ register = false }: { register?: boolean }) {
   return <><Navbar /><main className="auth-page">{toast && <div className={`auth-toast ${toast.tone}`} role={toast.tone === 'error' ? 'alert' : 'status'}><span className="auth-toast-mark">{toast.tone === 'loading' ? '…' : toast.tone === 'error' ? '!' : '✓'}</span><span>{toast.message}</span></div>}<div className="auth-card"><span className="auth-icon"><CircleUserRound size={25} /></span><p className="eyebrow">{register ? 'Join Pasu' : 'Welcome back'}</p><h1>{register ? 'One account. Every possibility.' : 'Good to see you.'}</h1><p className="auth-copy">{register ? 'Create one account to buy cattle, list cattle, and manage your farm.' : 'Log in to buy cattle, list cattle, and manage everything from one workspace.'}</p>{notice && <p className="auth-notice" role="status">{notice}</p>}<div className="auth-methods"><button type="button" className={identifierType === 'email' ? 'active' : ''} onClick={() => { setIdentifierType('email'); setError(''); setNotice('') }}>Email</button><button type="button" className={identifierType === 'phone' ? 'active' : ''} onClick={() => { setIdentifierType('phone'); setError(''); setNotice('') }}>Phone number</button></div><form onSubmit={submitCredentials}>{register && <><label>Full name<input required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Your full name" /></label><label>Email address<input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></label><label>Phone number<input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+94 77 123 4567" /></label><div className="auth-two-col"><label>District<input required value={district} onChange={e => setDistrict(e.target.value)} placeholder="Kandy" /></label><label>City / town<input required value={city} onChange={e => setCity(e.target.value)} placeholder="Gampola" /></label></div></>}{!register && <label>{identifierType === 'email' ? 'Email address' : 'Phone number'}<input required type={identifierType === 'email' ? 'email' : 'tel'} value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder={identifierType === 'email' ? 'you@example.com' : '+94 77 123 4567'} /></label>}<label>Password<input required type="password" minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" /></label>{register && <label>Confirm password<input required type="password" minLength={6} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeat your password" /></label>}<button className="button button-dark auth-submit" type="submit" disabled={submitting}>{submitting ? (register ? 'Creating account...' : 'Signing you in...') : register ? 'Create account' : 'Log in'} {!submitting && <ArrowUpRight size={16} />}</button>{error && <p className="form-error" role="alert">{error}</p>}</form><p className="auth-foot">{register ? 'Already have an account? ' : 'New to Pasu? '}<Link to={register ? '/login' : '/register'}>{register ? 'Log in' : 'Create an account'}</Link></p></div></main></>
 }
 
-function App() { return <BrowserRouter><PageTransition><Routes><Route path="/" element={<Home />} /><Route path="/marketplace" element={<Marketplace />} /><Route path="/cattle/:id" element={<Detail />} /><Route path="/login" element={<Auth />} /><Route path="/register" element={<Auth register />} /><Route path="/dashboard/*" element={<Dashboard />} /><Route path="/how-it-works" element={<HowItWorks />} /><Route path="/about" element={<About />} /><Route path="/contact" element={<Contact />} /><Route path="/privacy" element={<SimplePage title={<>Your privacy,<br /><em>kept simple.</em></>} />} /><Route path="/terms" element={<SimplePage title={<>Clear terms for<br /><em>clear decisions.</em></>} />} /><Route path="*" element={<SimplePage title="Page not found" />} /></Routes></PageTransition></BrowserRouter> }
+function Credits() {
+  return <SimplePage title={<>Photo credits,<br /><em>given properly.</em></>}>
+    <p className="body-copy credits-intro">The preview listings use freely licensed photographs from Wikimedia Commons, lightened for faster loading. They illustrate the sample listings and are not photos of the animals described. Each photograph remains the work of its photographer and is used under the licence shown.</p>
+    <div className="credits-list">
+      {photoCredits.map(item => <article className="credit-row" key={item.file}>
+        <img src={item.file} alt="" loading="lazy" decoding="async" />
+        <div><b>{item.photographer}</b><span>{item.licence}</span><a href={item.source} target="_blank" rel="noreferrer">View original <ArrowUpRight size={13} /></a></div>
+      </article>)}
+    </div>
+    <p className="body-copy">Cattle listed by real sellers are photographed by the seller, and those images stay with the listing. Questions about an image? Write to <a className="text-link" href="mailto:hello@pasu.lk">hello@pasu.lk</a>.</p>
+  </SimplePage>
+}
+
+function App() { return <BrowserRouter><PageTransition><Routes><Route path="/" element={<Home />} /><Route path="/marketplace" element={<Marketplace />} /><Route path="/cattle/:id" element={<Detail />} /><Route path="/login" element={<Auth />} /><Route path="/register" element={<Auth register />} /><Route path="/dashboard/*" element={<Dashboard />} /><Route path="/how-it-works" element={<HowItWorks />} /><Route path="/about" element={<About />} /><Route path="/contact" element={<Contact />} /><Route path="/credits" element={<Credits />} /><Route path="/privacy" element={<SimplePage title={<>Your privacy,<br /><em>kept simple.</em></>} />} /><Route path="/terms" element={<SimplePage title={<>Clear terms for<br /><em>clear decisions.</em></>} />} /><Route path="*" element={<SimplePage title="Page not found" />} /></Routes></PageTransition></BrowserRouter> }
 
 export default App

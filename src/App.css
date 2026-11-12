@@ -723,3 +723,15 @@ select { cursor:pointer }
   .nav-links.is-open { animation:none }
   .text-link:hover svg, .district-list a:hover svg { transform:none }
 }
+
+/* Photo credits page */
+.credits-intro { max-width:64ch }
+.credits-list { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; margin:26px 0 34px }
+.credit-row { display:flex; align-items:center; gap:12px; padding:10px; border:1px solid var(--line); background:#fff; box-shadow:0 1px 2px rgba(23,35,29,.05) }
+.credit-row img { width:72px; height:56px; object-fit:cover; background:var(--cream); flex:none }
+.credit-row b { display:block; font-size:.92rem; line-height:1.3 }
+.credit-row span { display:block; color:var(--muted); font-size:.78rem; margin-top:2px }
+.credit-row a { display:inline-flex; align-items:center; gap:4px; font-size:.78rem; color:var(--forest); border-bottom:1px solid var(--line); margin-top:6px; transition:border-color .2s }
+.credit-row a:hover { border-color:var(--clay) }
+@media(max-width:900px) { .credits-list { grid-template-columns:repeat(2, minmax(0,1fr)) } }
+@media(max-width:620px) { .credits-list { grid-template-columns:1fr } }

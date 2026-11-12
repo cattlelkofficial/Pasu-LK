@@ -16,7 +16,7 @@ Without credentials, the application uses the preview catalog and a local accoun
 
 1. Create a Supabase project.
 2. Copy the project URL and publishable anon key into `.env.local`.
-3. Run `supabase/migrations/202511090001_initial_schema.sql` in the Supabase SQL editor or with the Supabase CLI.
+3. Apply every file in `supabase/migrations/` in filename order, either with `supabase db push` after `supabase link` or by pasting them into the Supabase SQL editor one at a time. `202611100001_storage_bucket.sql` creates the public `cattle-images` bucket and its owner-scoped upload policies.
 4. Enable Email and Phone providers in Authentication → Providers. Registration creates the account and returns the user to the login page; returning users sign in with email/password or verified phone/password. Enable email confirmation if you want users to verify their email before the first login. Every registered account can both buy and sell; administrator accounts must be assigned securely by an owner.
 5. Apply `202511090003_unified_user_accounts.sql` after the earlier migrations. It normalizes ordinary accounts to the `user` role, stores registration profile fields, and enforces profile completion before listing creation through RLS.
 6. Apply `202611090001_realtime_messaging.sql`. Enable Realtime for `messages`, `user_presence`, and `message_read_receipts`, and deploy `supabase/functions/process-unanswered-messages`. Set `AI_MODEL_URL` and `AI_MODEL_API_KEY` as Edge Function secrets; never put the key in Vite environment variables.
@@ -27,7 +27,6 @@ Without credentials, the application uses the preview catalog and a local accoun
 Approved listings open a private conversation inside the dashboard. Messages, image attachments, read receipts, typing indicators, presence, block/report actions, and unread notifications are protected by participant-only RLS policies.
 
 Schedule the `process-unanswered-messages` Edge Function from a trusted server-side scheduler (for example, Supabase Cron invoking the function every minute). The function checks each recipient's configured timeout, availability, and AI settings before it writes an idempotent, clearly labelled AI message. Configure `ai_assistant_enabled` and `ai_auto_reply_enabled` from the dashboard; human takeover disables both settings.
-5. Create a public `cattle-images` storage bucket, then add storage policies matching the listing ownership policies in the migration.
 
 The migration enables RLS on every protected table, creates the profile-on-signup trigger, prevents users from changing their role, and only exposes approved listings publicly. The service-role key must never be placed in frontend environment variables.
 

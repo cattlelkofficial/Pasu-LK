@@ -183,6 +183,22 @@ export const cattle: Cattle[] = [
   },
 ]
 
+export type PhotoCredit = { file: string; photographer: string; licence: string; source: string }
+
+// Photographs used by the preview catalogue. They illustrate the sample listings
+// and are not photos of the animals described.
+export const photoCredits: PhotoCredit[] = [
+  { file: '/cattle/jersey-close.jpg', photographer: 'ITookSomePhotos', licence: 'CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Friendly_Jersey_cow,_near_Brighstone,_Isle_of_Wight,_England.jpg' },
+  { file: '/cattle/jersey-herd.jpg', photographer: 'BartLaridon', licence: 'CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:A_group_of_Jersey_cows.JPG' },
+  { file: '/cattle/jersey-barn.jpg', photographer: 'Jennifer Dickert', licence: 'CC BY 2.0', source: 'https://commons.wikimedia.org/wiki/File:Cute_Jersey_Cow.jpg' },
+  { file: '/cattle/jersey-profile.jpg', photographer: 'Missvain', licence: 'CC BY 4.0', source: 'https://commons.wikimedia.org/wiki/File:2024_Sonoma-Marin_Fair_-_Sarah_Stierch_09.jpg' },
+  { file: '/cattle/ayrshire-profile.jpg', photographer: 'Sergei S. Scurfield', licence: 'CC BY-SA 3.0', source: 'https://commons.wikimedia.org/wiki/File:Ayrshire_cattle.JPG' },
+  { file: '/cattle/friesian-field.jpg', photographer: 'Jeff the quiet', licence: 'CC0', source: 'https://commons.wikimedia.org/wiki/File:Hixon_Wisconsin_cows.jpg' },
+  { file: '/cattle/local-brown.jpg', photographer: 'Ebaran', licence: 'CC BY-SA 3.0', source: 'https://commons.wikimedia.org/wiki/File:Domestic_cattle_breed_-_Sri_Lanka.jpg' },
+  { file: '/cattle/local-red.jpg', photographer: 'Ushani Thennakoon', licence: 'CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Sri_Lankan_Cattle.jpg' },
+  { file: '/cattle/sahiwal-red.jpg', photographer: 'Pavanaja', licence: 'CC BY-SA 3.0', source: 'https://commons.wikimedia.org/wiki/File:Sahiwala_01.JPG' },
+]
+
 export function formatLkr(value: number) {
   return new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', maximumFractionDigits: 0 }).format(value).replace('LKR', 'LKR ')
 }
