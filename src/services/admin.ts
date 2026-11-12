@@ -64,6 +64,18 @@ export async function reviewListing(id: string, decision: 'approved' | 'rejected
   if (error) throw error
 }
 
+export async function setSellerVerification(id: string, verified: boolean) {
+  await assertAdmin()
+  const { error } = await supabase!.rpc('admin_set_seller_verification', { target_user: id, should_verify: verified })
+  if (error) throw error
+}
+
+export async function reviewSellerVerification(id: string, decision: 'approved' | 'rejected', reason?: string) {
+  await assertAdmin()
+  const { error } = await supabase!.rpc('admin_review_verification', { target_request: id, decision, review_reason: reason || null })
+  if (error) throw error
+}
+
 export async function getAdminUsers(search = '') {
   await assertAdmin()
   let query = supabase!.from('profiles').select('id,full_name,email,phone_number,role,district,city,is_verified,is_suspended,created_at,last_seen_at').order('created_at', { ascending: false }).limit(100)

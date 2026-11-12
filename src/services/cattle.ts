@@ -58,6 +58,11 @@ export type SellerContact = { name: string; phone: string }
 // owns the listing or is an administrator, so nobody else can read the number.
 export async function fetchSellerContact(cowId: string): Promise<SellerContact | null> {
   if (!supabase || !cowId) return null
+  // Read the session from storage rather than the in-memory account cache, which
+  // is only filled once a dashboard route has run. Without this the lookup
+  // silently did nothing on a fresh page load or a direct link.
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (!sessionData.session) return null
   const { data, error } = await supabase.rpc('seller_contact', { target_listing: cowId })
   if (error) throw error
   const row = (Array.isArray(data) ? data[0] : data) as { full_name: string | null; phone_number: string | null } | undefined

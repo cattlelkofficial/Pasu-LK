@@ -174,6 +174,28 @@ await db.exec(`
 const admins = await count(`select count(*) from public.profiles where role = 'admin'`)
 check('promotion statement yields exactly one admin', admins === 1, `${admins} admins`)
 
+console.log('\n8. Seller verification sets the badge flag')
+await db.exec(`insert into public.seller_verification_requests (id, user_id, status, documents) values ('55555555-5555-5555-5555-555555555555', '${SELLER}', 'pending', '[]'::jsonb)`)
+await db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$ select '${ADMIN}'::uuid $$`)
+await db.exec(`select public.admin_review_verification('55555555-5555-5555-5555-555555555555', 'approved', 'Papers checked')`)
+check('approving a request sets is_verified', (await count(`select count(*) from public.profiles where id = '${SELLER}' and is_verified`)) === 1)
+const requestRow = await one(`select status, reviewed_by from public.seller_verification_requests where id = '55555555-5555-5555-5555-555555555555'`)
+check('request is marked approved by that admin', requestRow.status === 'approved' && requestRow.reviewed_by === ADMIN)
+check('approval is audited', (await count(`select count(*) from public.admin_audit_logs where action_type = 'verification_approved'`)) === 1)
+await db.exec(`select public.admin_review_verification('55555555-5555-5555-5555-555555555555', 'rejected', 'Documents expired')`)
+check('rejecting a request clears is_verified', (await count(`select count(*) from public.profiles where id = '${SELLER}' and not is_verified`)) === 1)
+await db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$ select '${STRANGER}'::uuid $$`)
+let blocked = false
+try {
+  await db.exec(`select public.admin_review_verification('55555555-5555-5555-5555-555555555555', 'approved', null)`)
+} catch {
+  blocked = true
+}
+check('a non-admin cannot verify a seller', blocked)
+await db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$ select '${ADMIN}'::uuid $$`)
+await db.exec(`select public.admin_set_seller_verification('${SELLER}', true)`)
+check('the direct toggle also sets the flag', (await count(`select count(*) from public.profiles where id = '${SELLER}' and is_verified`)) === 1)
+
 console.log(`\n${failures === 0 ? 'PASS' : 'FAIL'} — ${failures} failure(s)`)
 if (pgcryptoStubbed) console.log('note: pgcrypto was skipped locally; Supabase enables it, and gen_random_uuid() is core on PostgreSQL 13+')
 await db.close()

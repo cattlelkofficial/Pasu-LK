@@ -739,3 +739,6 @@ select { cursor:pointer }
 /* Seller phone line, rendered only for the listing owner or an admin */
 .seller-contact { display:flex; align-items:center; gap:6px; margin:12px 0 0; padding:9px 11px; border:1px dashed var(--line); background:var(--cream); color:var(--muted); font-size:.82rem; line-height:1.4 }
 .seller-contact b { color:var(--ink); font-variant-numeric:tabular-nums }
+
+/* Compact row action inside data tables */
+.data-table .table-action { padding:6px 10px; font-size:.78rem; margin-left:6px }
