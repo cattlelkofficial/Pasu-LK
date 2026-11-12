@@ -15,9 +15,19 @@ type ListingRow = {
   health_condition: string
   vaccination_status: string
   cow_images?: { image_url: string; is_primary: boolean; display_order: number }[]
+  // An aliased embed is typed as an array by the client, so accept either shape.
+  seller?: SellerProfile | SellerProfile[] | null
 }
 
+type SellerProfile = { full_name: string | null; phone_number: string | null }
+
+// cow_listings points at profiles twice (seller_id and field_agent_id), so the
+// seller embed has to name the foreign key or PostgREST rejects the query as
+// ambiguous. Only the seller's name and phone are needed by the listing card.
+const LISTING_COLUMNS = 'id,title,breed,gender,estimated_age_months,asking_price_lkr,daily_yield_liters,district,city,description,health_condition,vaccination_status,cow_images(image_url,is_primary,display_order),seller:profiles!cow_listings_seller_id_fkey(full_name,phone_number)'
+
 function toCattle(row: ListingRow): Cattle {
+  const seller = Array.isArray(row.seller) ? row.seller[0] : row.seller
   const image = [...(row.cow_images || [])].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.display_order - b.display_order)[0]?.image_url
   return {
     id: row.id,
@@ -31,8 +41,8 @@ function toCattle(row: ListingRow): Cattle {
     price: row.asking_price_lkr,
     health: row.health_condition,
     vaccination: row.vaccination_status,
-    seller: 'Pasu seller',
-    phone: '',
+    seller: seller?.full_name?.trim() || 'Pasu seller',
+    phone: seller?.phone_number?.trim() || '',
     image: image || '',
     description: row.description,
   }
@@ -42,7 +52,7 @@ export async function fetchApprovedCattle(): Promise<Cattle[] | null> {
   if (!supabase) return null
   const { data, error } = await supabase
     .from('cow_listings')
-    .select('id,title,breed,gender,estimated_age_months,asking_price_lkr,daily_yield_liters,district,city,description,health_condition,vaccination_status,cow_images(image_url,is_primary,display_order)')
+    .select(LISTING_COLUMNS)
     .eq('listing_status', 'approved')
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -63,7 +73,7 @@ export async function searchApprovedCattle(filters: {
 }) {
   if (!supabase) return null
   let request = supabase.from('cow_listings')
-    .select('id,title,breed,gender,estimated_age_months,asking_price_lkr,daily_yield_liters,district,city,description,health_condition,vaccination_status,cow_images(image_url,is_primary,display_order)')
+    .select(LISTING_COLUMNS)
     .eq('listing_status', 'approved')
   if (filters.query) request = request.or(`title.ilike.%${filters.query}%,breed.ilike.%${filters.query}%,city.ilike.%${filters.query}%`)
   if (filters.district) request = request.eq('district', filters.district)
