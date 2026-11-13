@@ -17,6 +17,14 @@ import { SearchableDropdown } from './components/FormControls'
 import { Badge } from './components/lightswind/badge'
 import { Card } from './components/lightswind/card'
 import { Button } from './components/lightswind/button'
+import { Alert, AlertDescription, AlertTitle } from './components/lightswind/alert'
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
+} from './components/lightswind/pagination'
+import { Skeleton } from './components/lightswind/skeleton'
+import { Toaster } from './components/lightswind/toaster'
+import { Tooltip } from './components/lightswind/tooltip'
+import { toast } from './hooks/use-toast'
 
 function Logo() {
   return <Link to="/" className="logo" aria-label="Pasu home"><span className="logo-mark"><Leaf size={17} strokeWidth={2.5} /></span><span>Pasu</span></Link>
@@ -58,10 +66,23 @@ function TrustStrip() {
 function CattleCard({ cow }: { cow: Cattle }) {
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const toggleSaved = async () => { setSaveError(''); const previous = saved; setSaved(!previous); try { await toggleFavourite(cow.id, previous) } catch (error) { setSaved(previous); setSaveError(error instanceof Error ? error.message : 'Unable to save this listing.') } }
+  const toggleSaved = async () => {
+    setSaveError('')
+    const previous = saved
+    setSaved(!previous)
+    try {
+      await toggleFavourite(cow.id, previous)
+      toast({ title: previous ? 'Removed from saved' : 'Saved to your list', description: cow.title, variant: 'success', duration: 3000 })
+    } catch (error) {
+      setSaved(previous)
+      const message = error instanceof Error ? error.message : 'Unable to save this listing.'
+      setSaveError(message)
+      toast({ title: 'Could not update saved cattle', description: message, variant: 'destructive' })
+    }
+  }
   return <Card className="cattle-card" hoverable={false} bordered={false}>
     <Link to={`/cattle/${cow.id}`} className="card-image-wrap">{cow.image ? <img src={cow.image} alt={cow.title} /> : <span className="card-image-placeholder"><Leaf size={26} /><small>Photos coming soon</small></span>}{cow.sellerVerified && <Badge className="verified-badge" variant="unstyled" size="unstyled" shape="unstyled"><BadgeCheck size={14} /> Verified</Badge>}</Link>
-    <button className={`save-button ${saved ? 'saved' : ''}`} onClick={toggleSaved} aria-label={saved ? 'Remove from saved' : 'Save listing'}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /></button>{saveError && <span className="card-save-error" role="alert">{saveError}</span>}
+    <Tooltip asChild content={saved ? 'Remove from saved' : 'Save this listing'} side="left"><button className={`save-button ${saved ? 'saved' : ''}`} onClick={toggleSaved} aria-label={saved ? 'Remove from saved' : 'Save listing'}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /></button></Tooltip>{saveError && <span className="card-save-error" role="alert">{saveError}</span>}
     <div className="card-content"><div className="card-location">{cow.district} · {cow.city}</div><Link to={`/cattle/${cow.id}`}><h3>{cow.title}</h3></Link><div className="card-specs"><span>{cow.breed}</span><span>{cow.gender}</span><span>{cow.age} yrs</span></div><div className="card-footer"><div><span className="milk-yield">{cow.dailyYield}L</span><small>daily milk</small></div><strong>{formatLkr(cow.price)}</strong></div></div>
   </Card>
 }
@@ -220,21 +241,29 @@ function Marketplace() {
 
   const breedOptions = useMemo(() => [...new Set([...cattle.map(cow => cow.breed), ...(catalog || []).map(cow => cow.breed)])].sort(), [catalog])
   const sorted = useMemo(() => [...(catalog || [])].sort((a, b) => sort === 'price-low' ? a.price - b.price : sort === 'price-high' ? b.price - a.price : sort === 'milk' ? b.dailyYield - a.dailyYield : 0), [catalog, sort])
-  const shown = sorted.slice(0, visible)
+  const pageSize = 6
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const page = Math.min(pageCount, Math.max(1, Math.floor((visible - 1) / pageSize) + 1))
+  const goToPage = (next: number) => setVisible(Math.min(pageCount, Math.max(1, next)) * pageSize)
+  const shown = sorted.slice((page - 1) * pageSize, page * pageSize)
   const chips = marketFilterChips(applied)
   const loading = catalog === null
 
   return <><Navbar /><main className="marketplace-page"><div className="container">
     <div className="market-hero"><div><p className="eyebrow">The Pasu marketplace</p><h1>Explore cattle.<br /><em>Find your next one.</em></h1></div><p className="market-intro">Every approved listing in one place. Search by district, breed, price, age or daily milk yield, then message the farmer directly inside Pasu.</p></div>
-    {catalogError && <p className="catalog-notice">{catalogError}</p>}
+    {catalogError && <Alert className="catalog-alert"><AlertTitle>Search is temporarily unavailable</AlertTitle><AlertDescription>{catalogError}</AlertDescription></Alert>}
     <FilterBar filters={filters} setFilter={setFilter} breedOptions={breedOptions} panelOpen={panelOpen} setPanelOpen={setPanelOpen} onSearch={runSearch} onClear={() => { setFilters({ ...emptyMarketFilters }); setApplied({ ...emptyMarketFilters }); setPanelOpen(false) }} />
     <div className="results-head" aria-busy={refreshing}>
-      <span>{loading ? 'Loading approved cattle…' : <><b>{shown.length}</b> of {sorted.length} cattle shown{chips.length ? '' : ' across all districts and breeds'}{refreshing && <em className="results-refreshing">Updating…</em>}</>}</span>
+      <span>{loading ? 'Loading approved cattle…' : <><b>{sorted.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, sorted.length)}</b> of {sorted.length} cattle shown{chips.length ? '' : ' across all districts and breeds'}{refreshing && <em className="results-refreshing">Updating…</em>}</>}</span>
       <label>Sort by <select value={sort} onChange={event => setSort(event.target.value)}><option value="newest">Newest first</option><option value="price-low">Lowest price</option><option value="price-high">Highest price</option><option value="milk">Highest milk yield</option></select><ChevronDown size={15} /></label>
     </div>
-    {loading ? <div className="market-placeholder">Checking the marketplace for approved cattle…</div> : sorted.length ? <>
+    {loading ? <div className="cattle-grid marketplace-grid" aria-busy="true">{Array.from({ length: 6 }).map((_, index) => <div className="cattle-card skeleton-card" key={index}><Skeleton className="skeleton-image" /><div className="card-content"><Skeleton className="skeleton-line skeleton-line-lg" /><Skeleton className="skeleton-line skeleton-line-sm" /><div className="card-footer"><Skeleton className="skeleton-line skeleton-line-sm" /><Skeleton className="skeleton-line skeleton-line-md" /></div></div></div>)}</div> : sorted.length ? <>
       <div className="cattle-grid marketplace-grid">{shown.map(cow => <CattleCard key={cow.id} cow={cow} />)}</div>
-      {shown.length < sorted.length && <div className="load-more"><Button variant="unstyled" size="unstyled" className="button button-dark" onClick={() => setVisible(visible + 6)}>Load more cattle</Button></div>}
+      {pageCount > 1 && <Pagination className="market-pagination"><PaginationContent>
+        <PaginationItem><PaginationPrevious href="#" className={page === 1 ? 'pagination-disabled' : ''} onClick={event => { event.preventDefault(); goToPage(page - 1) }} /></PaginationItem>
+        {Array.from({ length: pageCount }, (_, index) => index + 1).map(number => <PaginationItem key={number}><PaginationLink href="#" isActive={number === page} onClick={event => { event.preventDefault(); goToPage(number) }}>{number}</PaginationLink></PaginationItem>)}
+        <PaginationItem><PaginationNext href="#" className={page === pageCount ? 'pagination-disabled' : ''} onClick={event => { event.preventDefault(); goToPage(page + 1) }} /></PaginationItem>
+      </PaginationContent></Pagination>}
     </> : <Card className="empty-state marketplace-empty" bordered><Badge variant="info" withDot dotColor="#c86d4d">Live catalog</Badge><Search size={28} /><h3>{chips.length ? 'No cattle match these filters' : 'No approved cattle yet'}</h3><p>{chips.length ? 'Try removing a filter or widening your price and milk range.' : 'Approved listings will appear here after an administrator checks the details.'}</p><Button variant="unstyled" size="unstyled" className="button button-light" onClick={() => { setFilters({ ...emptyMarketFilters }); setApplied({ ...emptyMarketFilters }); setPanelOpen(false) }}>Clear filters</Button></Card>}
   </div></main><Footer /></>
 }
@@ -410,6 +439,6 @@ function ResetPassword() {
   return <><Navbar /><main className="auth-page"><div className="auth-card"><span className="auth-icon"><CircleUserRound size={25} /></span><p className="eyebrow">New password</p><h1>Choose a new password.</h1><p className="auth-copy">Pick something you have not used on Pasu before. You will be signed in once it is saved.</p><form onSubmit={submit}><label>New password<input required type="password" minLength={8} value={password} onChange={event => setPassword(event.target.value)} placeholder="At least 8 characters" /></label><label>Confirm new password<input required type="password" minLength={8} value={confirm} onChange={event => setConfirm(event.target.value)} placeholder="Repeat your new password" /></label><button className="button button-dark auth-submit" type="submit" disabled={busy}>{busy ? 'Saving password...' : 'Save new password'}</button>{error && <p className="form-error" role="alert">{error}</p>}</form><p className="auth-foot"><Link to="/login">Back to log in</Link></p></div></main><Footer /></>
 }
 
-function App() { return <BrowserRouter><PageTransition><Routes><Route path="/" element={<Home />} /><Route path="/marketplace" element={<Marketplace />} /><Route path="/cattle/:id" element={<Detail />} /><Route path="/login" element={<Auth />} /><Route path="/register" element={<Auth register />} /><Route path="/dashboard/*" element={<Dashboard />} /><Route path="/admin/*" element={<Dashboard />} /><Route path="/forgot-password" element={<ForgotPassword />} /><Route path="/reset-password" element={<ResetPassword />} /><Route path="/how-it-works" element={<HowItWorks />} /><Route path="/about" element={<About />} /><Route path="/contact" element={<Contact />} /><Route path="/credits" element={<Credits />} /><Route path="/privacy" element={<SimplePage title={<>Your privacy,<br /><em>kept simple.</em></>} />} /><Route path="/terms" element={<SimplePage title={<>Clear terms for<br /><em>clear decisions.</em></>} />} /><Route path="*" element={<SimplePage title="Page not found" />} /></Routes></PageTransition></BrowserRouter> }
+function App() { return <BrowserRouter><PageTransition><Routes><Route path="/" element={<Home />} /><Route path="/marketplace" element={<Marketplace />} /><Route path="/browse" element={<Marketplace />} /><Route path="/cattle/:id" element={<Detail />} /><Route path="/login" element={<Auth />} /><Route path="/register" element={<Auth register />} /><Route path="/dashboard/*" element={<Dashboard />} /><Route path="/admin/*" element={<Dashboard />} /><Route path="/forgot-password" element={<ForgotPassword />} /><Route path="/reset-password" element={<ResetPassword />} /><Route path="/how-it-works" element={<HowItWorks />} /><Route path="/about" element={<About />} /><Route path="/contact" element={<Contact />} /><Route path="/credits" element={<Credits />} /><Route path="/privacy" element={<SimplePage title={<>Your privacy,<br /><em>kept simple.</em></>} />} /><Route path="/terms" element={<SimplePage title={<>Clear terms for<br /><em>clear decisions.</em></>} />} /><Route path="*" element={<SimplePage title="Page not found" />} /></Routes></PageTransition><Toaster position="top-right" /></BrowserRouter> }
 
 export default App

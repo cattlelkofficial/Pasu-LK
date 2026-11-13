@@ -921,3 +921,41 @@ html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var
   margin-left:10px; font-style:normal; font-size:10px; letter-spacing:.08em;
   text-transform:uppercase; color:var(--muted)
 }
+
+/* ------------------------------------------------------------------
+   Lightswind surfaces added to the marketplace: loading skeleton,
+   soft alert for a failed query and pagination under the grid.
+   ------------------------------------------------------------------ */
+.catalog-alert { margin:-28px 0 22px; align-items:center; border-left:3px solid var(--clay); background:#f8ece6; color:var(--forest) }
+.catalog-alert h5 { margin:0 0 3px }
+.catalog-alert div { color:#6d7a70 }
+.skeleton-card { pointer-events:none }
+.skeleton-card .card-content { display:flex; flex-direction:column; gap:10px }
+.skeleton-image { width:100%; height:220px; border-radius:0; background:var(--cream)!important }
+.skeleton-line { height:12px; background:#e9e6db!important }
+.skeleton-line-lg { height:20px; width:72% }
+.skeleton-line-sm { width:46% }
+.skeleton-line-md { width:34%; margin-left:auto }
+.skeleton-card .card-footer { display:flex; justify-content:space-between; align-items:center; gap:12px }
+.market-pagination { margin:30px 0 0; justify-content:center }
+.market-pagination a { font-size:12px; color:var(--forest); border-radius:0 }
+.market-pagination a[aria-current="page"] { background:var(--forest); color:#fff; border-color:var(--forest) }
+.market-pagination a:hover:not([aria-current="page"]) { background:var(--cream) }
+.pagination-disabled { pointer-events:none; opacity:.4 }
+@media(max-width:520px) {
+  .market-pagination a { min-width:34px; height:34px; padding:0 8px }
+}
+
+/* Lightswind breadcrumb and completion bar inside the workspace shell. */
+.dashboard-heading-copy { min-width:0 }
+.dashboard-breadcrumb { margin:0 0 14px }
+.dashboard-breadcrumb ol { font-size:11px; color:var(--muted); gap:7px }
+.dashboard-breadcrumb a { color:var(--muted) }
+.dashboard-breadcrumb a:hover { color:var(--forest) }
+.dashboard-breadcrumb [aria-current="page"] { color:var(--forest); font-weight:600 }
+.profile-progress { margin-top:10px; max-width:340px; height:6px!important }
+@media(max-width:620px) { .profile-progress { max-width:none } }
+
+/* Lightswind component tokens mapped onto the Pasu palette, so a component that
+   leans on primarylw still reads as forest green rather than library blue. */
+:root { --primarylw:#214535; --primarylw-2:#2f5a45 }
