@@ -336,16 +336,22 @@ const TooltipContentDisplay = () => {
   }, [config, triggerRef]);
 
   // A layout effect measures the content in the same commit it mounts, so the
-  // first painted frame is already in place. The rAF below is a second pass for
-  // late layout changes, and scroll/resize keep it attached afterwards.
+  // first painted frame is already in place. That first measurement can be taken
+  // before the webfont settles, which leaves the pill a few pixels short and
+  // pulls the tooltip off centre, so the element is observed for the rest of its
+  // life: any change in its box re-centres it without waiting for a frame.
   React.useLayoutEffect(() => {
     if (open) {
       updatePosition();
       const id = requestAnimationFrame(updatePosition);
+      const content = contentRef.current;
+      const observer = content && typeof ResizeObserver !== "undefined" ? new ResizeObserver(updatePosition) : null;
+      if (content && observer) observer.observe(content);
       window.addEventListener("resize", updatePosition);
       window.addEventListener("scroll", updatePosition, true);
       return () => {
         cancelAnimationFrame(id);
+        observer?.disconnect();
         window.removeEventListener("resize", updatePosition);
         window.removeEventListener("scroll", updatePosition, true);
       };

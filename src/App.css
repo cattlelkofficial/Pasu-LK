@@ -942,6 +942,19 @@ html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var
 .market-pagination a[aria-current="page"] { background:var(--forest); color:#fff; border-color:var(--forest) }
 .market-pagination a:hover:not([aria-current="page"]) { background:var(--cream) }
 .pagination-disabled { pointer-events:none; opacity:.4 }
+/* The page row must stay inside the reading column: wrap it, and on a phone drop
+   the Previous/Next words so the arrows and numbers fit without spilling out. */
+.market-pagination ul { flex-wrap:wrap; justify-content:center; row-gap:6px }
+.market-pagination-status { display:none }
+/* A phone cannot hold seven page links: arrows plus "page of pages" instead, and
+   the numbers come back as soon as there is room for them. */
+@media(max-width:520px) {
+  .market-pagination ul { gap:6px }
+  .market-pagination a > span:not(.sr-only) { display:none }
+  .market-pagination a { padding:0 10px }
+  .market-pagination-number, .market-pagination-gap { display:none }
+  .market-pagination-status { display:flex; align-items:center; font-size:12px; color:var(--muted); padding:0 6px; white-space:nowrap }
+}
 @media(max-width:520px) {
   .market-pagination a { min-width:34px; height:34px; padding:0 8px }
 }
