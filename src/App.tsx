@@ -10,10 +10,10 @@ import { cattle, districts, formatLkr, photoCredits, type Cattle } from './data'
 import { getAccount, saveAccount, sendPasswordReset, syncSupabaseAccount, updatePassword, useAccount } from './auth'
 import { Dashboard } from './Dashboard'
 import { supabase } from './lib/supabase'
-import { fetchApprovedCattle, fetchSellerContact } from './services/cattle'
+import { fetchApprovedCattle, fetchSellerContact, searchApprovedCattle } from './services/cattle'
 import { toggleFavourite } from './services/marketplace'
 import { PageTransition } from './components/PageTransition'
-import { MultiSelectComboBox, SearchableDropdown } from './components/FormControls'
+import { SearchableDropdown } from './components/FormControls'
 import { Badge } from './components/lightswind/badge'
 import { Card } from './components/lightswind/card'
 import { Button } from './components/lightswind/button'
@@ -60,7 +60,7 @@ function CattleCard({ cow }: { cow: Cattle }) {
   const [saveError, setSaveError] = useState('')
   const toggleSaved = async () => { setSaveError(''); const previous = saved; setSaved(!previous); try { await toggleFavourite(cow.id, previous) } catch (error) { setSaved(previous); setSaveError(error instanceof Error ? error.message : 'Unable to save this listing.') } }
   return <Card className="cattle-card" hoverable={false} bordered={false}>
-    <Link to={`/cattle/${cow.id}`} className="card-image-wrap"><img src={cow.image} alt={cow.title} />{cow.sellerVerified && <Badge className="verified-badge" variant="unstyled" size="unstyled" shape="unstyled"><BadgeCheck size={14} /> Verified</Badge>}</Link>
+    <Link to={`/cattle/${cow.id}`} className="card-image-wrap">{cow.image ? <img src={cow.image} alt={cow.title} /> : <span className="card-image-placeholder"><Leaf size={26} /><small>Photos coming soon</small></span>}{cow.sellerVerified && <Badge className="verified-badge" variant="unstyled" size="unstyled" shape="unstyled"><BadgeCheck size={14} /> Verified</Badge>}</Link>
     <button className={`save-button ${saved ? 'saved' : ''}`} onClick={toggleSaved} aria-label={saved ? 'Remove from saved' : 'Save listing'}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /></button>{saveError && <span className="card-save-error" role="alert">{saveError}</span>}
     <div className="card-content"><div className="card-location">{cow.district} · {cow.city}</div><Link to={`/cattle/${cow.id}`}><h3>{cow.title}</h3></Link><div className="card-specs"><span>{cow.breed}</span><span>{cow.gender}</span><span>{cow.age} yrs</span></div><div className="card-footer"><div><span className="milk-yield">{cow.dailyYield}L</span><small>daily milk</small></div><strong>{formatLkr(cow.price)}</strong></div></div>
   </Card>
@@ -83,23 +83,136 @@ function Home() {
   </main><Footer /></>
 }
 
-function FilterBar({ query, setQuery, district, setDistrict, breeds, breedOptions, genders, setBreeds, setGenders }: { query: string; setQuery: (v: string) => void; district: string; setDistrict: (v: string) => void; breeds: string[]; breedOptions: string[]; genders: string[]; setBreeds: (v: string[]) => void; setGenders: (v: string[]) => void }) {
-  return <Card className="market-filter-card" bordered><div className="filter-bar"><div className="search-field"><Search size={19} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search breed, location or listing" /></div><SearchableDropdown placeholder="District" value={district} options={districts} onChange={setDistrict} /><MultiSelectComboBox label="Breeds" options={breedOptions} values={breeds} onChange={setBreeds} /><MultiSelectComboBox label="Gender" options={['Female', 'Male']} values={genders} onChange={setGenders} /><Button variant="unstyled" size="unstyled" className="filter-button"><SlidersHorizontal size={17} /> Filters</Button></div></Card>
+type MarketFilters = {
+  query: string
+  district: string
+  breed: string
+  gender: string
+  minPrice: string
+  maxPrice: string
+  minYield: string
+  maxAge: string
+}
+
+const emptyMarketFilters: MarketFilters = { query: '', district: '', breed: '', gender: '', minPrice: '', maxPrice: '', minYield: '', maxAge: '' }
+
+function numberOrUndefined(value: string) {
+  const parsed = Number(value)
+  return value.trim() !== '' && Number.isFinite(parsed) ? parsed : undefined
+}
+
+function matchesMarketFilters(cow: Cattle, filters: MarketFilters) {
+  const query = filters.query.trim().toLowerCase()
+  if (query && !`${cow.title} ${cow.breed} ${cow.city} ${cow.district}`.toLowerCase().includes(query)) return false
+  if (filters.district && cow.district !== filters.district) return false
+  if (filters.breed && cow.breed !== filters.breed) return false
+  if (filters.gender && cow.gender !== filters.gender) return false
+  if (filters.minPrice && cow.price < Number(filters.minPrice)) return false
+  if (filters.maxPrice && cow.price > Number(filters.maxPrice)) return false
+  if (filters.minYield && cow.dailyYield < Number(filters.minYield)) return false
+  if (filters.maxAge && cow.age > Number(filters.maxAge)) return false
+  return true
+}
+
+// Every applied filter becomes a chip the buyer can remove on its own, the way
+// the reference explore page does it.
+function marketFilterChips(filters: MarketFilters) {
+  const chips: { key: keyof MarketFilters; label: string }[] = []
+  if (filters.query.trim()) chips.push({ key: 'query', label: `Search: ${filters.query.trim()}` })
+  if (filters.district) chips.push({ key: 'district', label: filters.district })
+  if (filters.breed) chips.push({ key: 'breed', label: filters.breed })
+  if (filters.gender) chips.push({ key: 'gender', label: filters.gender })
+  if (filters.minPrice) chips.push({ key: 'minPrice', label: `From ${formatLkr(Number(filters.minPrice))}` })
+  if (filters.maxPrice) chips.push({ key: 'maxPrice', label: `Up to ${formatLkr(Number(filters.maxPrice))}` })
+  if (filters.minYield) chips.push({ key: 'minYield', label: `${filters.minYield}L+ milk a day` })
+  if (filters.maxAge) chips.push({ key: 'maxAge', label: `Up to ${filters.maxAge} years` })
+  return chips
+}
+
+function FilterBar({ filters, setFilter, breedOptions, panelOpen, setPanelOpen, onSearch, onClear }: {
+  filters: MarketFilters
+  setFilter: (key: keyof MarketFilters, value: string) => void
+  breedOptions: string[]
+  panelOpen: boolean
+  setPanelOpen: (open: boolean) => void
+  onSearch: () => void
+  onClear: () => void
+}) {
+  const chips = marketFilterChips(filters)
+  return <Card className="market-filter-card" bordered>
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); onSearch() }}>
+      <div className="search-field"><Search size={19} /><input value={filters.query} onChange={event => setFilter('query', event.target.value)} placeholder="What are you looking for?" aria-label="Search cattle" /></div>
+      <SearchableDropdown placeholder="District" value={filters.district} options={districts} onChange={value => setFilter('district', value === filters.district ? '' : value)} />
+      <SearchableDropdown placeholder="Breed" value={filters.breed} options={breedOptions} onChange={value => setFilter('breed', value === filters.breed ? '' : value)} />
+      <Button type="submit" variant="unstyled" size="unstyled" className="button button-dark filter-search">Search</Button>
+      <Button type="button" variant="unstyled" size="unstyled" className="filter-button" onClick={() => setPanelOpen(!panelOpen)} aria-expanded={panelOpen}><SlidersHorizontal size={17} /> Filters{chips.length ? ` (${chips.length})` : ''}</Button>
+    </form>
+    {panelOpen && <div className="filter-panel">
+      <label>Minimum price (LKR)<input type="number" min="0" inputMode="numeric" value={filters.minPrice} onChange={event => setFilter('minPrice', event.target.value)} placeholder="Any" /></label>
+      <label>Maximum price (LKR)<input type="number" min="0" inputMode="numeric" value={filters.maxPrice} onChange={event => setFilter('maxPrice', event.target.value)} placeholder="Any" /></label>
+      <label>Milk a day (litres)<input type="number" min="0" step="0.5" inputMode="decimal" value={filters.minYield} onChange={event => setFilter('minYield', event.target.value)} placeholder="Any" /></label>
+      <label>Oldest age (years)<input type="number" min="0" inputMode="numeric" value={filters.maxAge} onChange={event => setFilter('maxAge', event.target.value)} placeholder="Any" /></label>
+      <label>Gender<select value={filters.gender} onChange={event => setFilter('gender', event.target.value)}><option value="">Any</option><option value="Female">Female</option><option value="Male">Male</option></select></label>
+      <div className="filter-panel-actions"><button type="button" className="text-link" onClick={onClear}>Clear all</button><Button type="button" variant="unstyled" size="unstyled" className="button button-light" onClick={() => setPanelOpen(false)}>Done</Button></div>
+    </div>}
+    {chips.length > 0 && <div className="filter-chips">{chips.map(chip => <span className="filter-chip" key={chip.key}>{chip.label}<button type="button" aria-label={`Remove ${chip.label}`} onClick={() => setFilter(chip.key, '')}><X size={12} /></button></span>)}<button type="button" className="filter-clear" onClick={onClear}>Clear all filters</button></div>}
+  </Card>
 }
 
 function Marketplace() {
   const params = new URLSearchParams(window.location.search)
-  const [catalog, setCatalog] = useState(cattle)
+  const [filters, setFilters] = useState<MarketFilters>({ ...emptyMarketFilters, query: params.get('q') || '', district: params.get('district') || '' })
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [catalog, setCatalog] = useState<Cattle[] | null>(() => (supabase ? null : cattle))
   const [catalogError, setCatalogError] = useState('')
-  const [query, setQuery] = useState(params.get('q') || '')
-  const [district, setDistrict] = useState(params.get('district') || '')
-  const [breeds, setBreeds] = useState<string[]>([])
-  const [genders, setGenders] = useState<string[]>([])
   const [sort, setSort] = useState('newest')
-  const breedOptions = useMemo(() => [...new Set(catalog.map(cow => cow.breed))].sort(), [catalog])
-  useEffect(() => { if (!supabase) return; fetchApprovedCattle().then(rows => { if (rows) setCatalog(rows) }).catch(() => setCatalogError('Live listings are temporarily unavailable. Showing the latest available catalog.')) }, [])
-  const filtered = useMemo(() => catalog.filter(c => !district || c.district === district).filter(c => !breeds.length || breeds.includes(c.breed)).filter(c => !genders.length || genders.includes(c.gender)).filter(c => `${c.title} ${c.breed} ${c.city}`.toLowerCase().includes(query.toLowerCase())).sort((a, b) => sort === 'price-low' ? a.price - b.price : sort === 'price-high' ? b.price - a.price : sort === 'milk' ? b.dailyYield - a.dailyYield : 0), [catalog, district, query, sort, breeds, genders])
-  return <><Navbar /><main className="marketplace-page"><div className="container"><div className="market-hero"><div><p className="eyebrow">The Pasu marketplace</p><h1>Find cattle that<br /><em>fit your farm.</em></h1></div><p className="market-intro">Every listing has a story. We help you see the useful parts first—so you can spend less time searching and more time deciding.</p></div>{catalogError && <p className="catalog-notice">{catalogError}</p>}<FilterBar {...{ query, setQuery, district, setDistrict, breeds, breedOptions, genders, setBreeds, setGenders }} /><div className="results-head"><span><b>{filtered.length}</b> cattle available</span><label>Sort by <select value={sort} onChange={e => setSort(e.target.value)}><option value="newest">Newest first</option><option value="price-low">Lowest price</option><option value="price-high">Highest price</option><option value="milk">Highest milk yield</option></select><ChevronDown size={15} /></label></div>{filtered.length ? <div className="cattle-grid marketplace-grid">{filtered.map(cow => <CattleCard key={cow.id} cow={cow} />)}</div> : <Card className="empty-state marketplace-empty" bordered><Badge variant="info" withDot dotColor="#c86d4d">Live catalog</Badge><Search size={28} /><h3>No cattle found</h3><p>Approved listings will appear here after an administrator checks the details.</p><Button variant="unstyled" size="unstyled" className="button button-light" onClick={() => { setQuery(''); setDistrict(''); setBreeds([]); setGenders([]) }}>Clear filters</Button></Card>}</div></main><Footer /></>
+  const [visible, setVisible] = useState(6)
+
+  const setFilter = (key: keyof MarketFilters, value: string) => setFilters(previous => ({ ...previous, [key]: value }))
+
+  // Approved listings only, filtered in the database when Supabase is configured
+  // and against the preview catalogue otherwise.
+  useEffect(() => {
+    setVisible(6)
+    if (!supabase) {
+      setCatalog(cattle.filter(cow => matchesMarketFilters(cow, filters)))
+      return
+    }
+    let active = true
+    setCatalog(null)
+    searchApprovedCattle({
+      query: filters.query.trim() || undefined,
+      district: filters.district || undefined,
+      breed: filters.breed || undefined,
+      gender: filters.gender || undefined,
+      minPrice: numberOrUndefined(filters.minPrice),
+      maxPrice: numberOrUndefined(filters.maxPrice),
+      minYield: numberOrUndefined(filters.minYield),
+      maxAgeMonths: filters.maxAge ? Number(filters.maxAge) * 12 : undefined,
+    })
+      .then(rows => { if (active) { setCatalog(rows || []); setCatalogError('') } })
+      .catch(() => { if (active) { setCatalog([]); setCatalogError('Live listings are temporarily unavailable. Please try again shortly.') } })
+    return () => { active = false }
+  }, [filters])
+
+  const breedOptions = useMemo(() => [...new Set([...cattle.map(cow => cow.breed), ...(catalog || []).map(cow => cow.breed)])].sort(), [catalog])
+  const sorted = useMemo(() => [...(catalog || [])].sort((a, b) => sort === 'price-low' ? a.price - b.price : sort === 'price-high' ? b.price - a.price : sort === 'milk' ? b.dailyYield - a.dailyYield : 0), [catalog, sort])
+  const shown = sorted.slice(0, visible)
+  const chips = marketFilterChips(filters)
+
+  return <><Navbar /><main className="marketplace-page"><div className="container">
+    <div className="market-hero"><div><p className="eyebrow">The Pasu marketplace</p><h1>Explore cattle.<br /><em>Find your next one.</em></h1></div><p className="market-intro">Every approved listing in one place. Search by district, breed, price, age or daily milk yield, then message the farmer directly inside Pasu.</p></div>
+    {catalogError && <p className="catalog-notice">{catalogError}</p>}
+    <FilterBar filters={filters} setFilter={setFilter} breedOptions={breedOptions} panelOpen={panelOpen} setPanelOpen={setPanelOpen} onSearch={() => { setVisible(6); setPanelOpen(false) }} onClear={() => { setFilters({ ...emptyMarketFilters }); setPanelOpen(false) }} />
+    <div className="results-head">
+      <span>{catalog === null ? 'Loading approved cattle…' : <><b>{shown.length}</b> of {sorted.length} cattle shown{chips.length ? '' : ' across all districts and breeds'}</>}</span>
+      <label>Sort by <select value={sort} onChange={event => setSort(event.target.value)}><option value="newest">Newest first</option><option value="price-low">Lowest price</option><option value="price-high">Highest price</option><option value="milk">Highest milk yield</option></select><ChevronDown size={15} /></label>
+    </div>
+    {catalog === null ? <div className="market-placeholder">Checking the marketplace for approved cattle…</div> : sorted.length ? <>
+      <div className="cattle-grid marketplace-grid">{shown.map(cow => <CattleCard key={cow.id} cow={cow} />)}</div>
+      {shown.length < sorted.length && <div className="load-more"><Button variant="unstyled" size="unstyled" className="button button-dark" onClick={() => setVisible(visible + 6)}>Load more cattle</Button></div>}
+    </> : <Card className="empty-state marketplace-empty" bordered><Badge variant="info" withDot dotColor="#c86d4d">Live catalog</Badge><Search size={28} /><h3>No cattle match these filters</h3><p>{chips.length ? 'Try removing a filter or widening your price and milk range.' : 'Approved listings will appear here after an administrator checks the details.'}</p><Button variant="unstyled" size="unstyled" className="button button-light" onClick={() => { setFilters({ ...emptyMarketFilters }); setPanelOpen(false) }}>Clear filters</Button></Card>}
+  </div></main><Footer /></>
 }
 
 function Detail() {
