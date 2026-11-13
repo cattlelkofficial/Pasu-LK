@@ -20,8 +20,11 @@
 .selected-options { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px }
 .selected-options button { border:0; background:#e8f0d1; color:#4b6b3f; padding:5px 7px; display:inline-flex; align-items:center; gap:4px; font-size:10px }
 .multi-select-menu { top:calc(100% + 42px) }
-.market-filter-card { padding:0!important; border-radius:0!important; background:rgba(255,255,255,.72)!important; box-shadow:0 18px 45px rgba(33,69,53,.08)!important }
-.market-filter-card .filter-bar { border:0 }
+/* The card owns the gap below the bar. The bar's own margin-bottom cannot
+   collapse through the card's border, so it painted a 23px white band inside
+   the card instead of spacing the card from the results line. */
+.market-filter-card { padding:0!important; border-radius:0!important; background:rgba(255,255,255,.72)!important; box-shadow:0 18px 45px rgba(33,69,53,.08)!important; margin-bottom:23px }
+.market-filter-card .filter-bar { border:0; margin-bottom:0 }
 .marketplace-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:330px; padding:48px!important; border-radius:18px!important; background:linear-gradient(135deg,#fff 0%,#f0eee5 100%)!important; box-shadow:0 20px 50px rgba(33,69,53,.1)!important }
 .marketplace-empty .badge { background:#e8f0d1; border:1px solid #c8df71; color:#214535; padding:7px 12px }
 .marketplace-empty h3 { margin:2px 0 0 }
@@ -888,6 +891,9 @@ html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var
   min-height:52px; padding:0 16px; background:transparent
 }
 .filter-search { min-height:52px; border-radius:0 }
+/* Both cells fill the 52px row; the Filters padding made it 50px and left a
+   white seam at the end of the bar. */
+.filter-bar > .filter-search, .filter-bar > .filter-button { align-self:stretch }
 
 /* Below the desktop breakpoint the bar becomes a grid: search and both selects
    full width, then Search and Filters side by side. Without this the old
