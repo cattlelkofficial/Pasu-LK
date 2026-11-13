@@ -439,6 +439,8 @@ select { border:0; background:transparent; outline:0; color:var(--ink); font-siz
 .auth-back { display:block; border:0; background:none; color:var(--clay); font-size:11px; margin:15px auto 0 }
 .form-error { color:#b24f39; font-size:11px; margin:14px 0 0 }
 .auth-card form .button { width:100% }
+.auth-forgot { display:inline-block; margin-top:14px; font-size:12px; color:var(--muted); text-decoration:underline; text-underline-offset:3px }
+.auth-forgot:hover { color:var(--forest) }
 @media(max-width:900px) {
   .dashboard-sidebar { position:fixed; left:-270px; top:0; bottom:0; z-index:20 }
   .dashboard-sidebar.open { left:0; box-shadow:10px 0 30px rgba(0,0,0,.15) }

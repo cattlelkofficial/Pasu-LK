@@ -42,13 +42,13 @@ const marketplaceMenu = [
 const menu: Record<AccountRole, { label: string; path: string; icon: typeof LayoutDashboard }[]> = {
   user: marketplaceMenu,
   admin: [
-    { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Listing approvals', path: '/dashboard/approvals', icon: ClipboardCheck },
-    { label: 'Seller verification', path: '/dashboard/verifications', icon: BadgeCheck },
-    { label: 'Cattle management', path: '/dashboard/listings', icon: Store },
-    { label: 'User management', path: '/dashboard/users', icon: UsersIcon },
-    { label: 'Transactions', path: '/dashboard/transactions', icon: BarChart3 },
-    { label: 'Commission settings', path: '/dashboard/commission', icon: Settings },
+    { label: 'Overview', path: '/admin', icon: LayoutDashboard },
+    { label: 'Listing approvals', path: '/admin/approvals', icon: ClipboardCheck },
+    { label: 'Seller verification', path: '/admin/verifications', icon: BadgeCheck },
+    { label: 'Cattle management', path: '/admin/listings', icon: Store },
+    { label: 'User management', path: '/admin/users', icon: UsersIcon },
+    { label: 'Transactions', path: '/admin/transactions', icon: BarChart3 },
+    { label: 'Commission settings', path: '/admin/commission', icon: Settings },
   ],
 }
 
@@ -66,7 +66,7 @@ function DashboardShell({ children }: { children: ReactNode }) {
       <div className="dashboard-brand"><Link to="/" className="logo"><span className="logo-mark"><Leaf size={17} /></span><span>Pasu</span></Link><button className="dashboard-close" onClick={() => setMobile(false)}><X size={20} /></button></div>
       <div className="workspace-label">{account.role === 'admin' ? 'Owner workspace' : `${account.role} workspace`}</div>
       <ScrollArea className="dashboard-nav-scroll"><nav className="dashboard-nav">{links.map(item => { const Icon = item.icon; return <Link key={item.path} className={location.pathname === item.path ? 'active' : ''} to={item.path} onClick={() => setMobile(false)}><Icon size={18} />{item.label}</Link> })}</nav></ScrollArea>
-      <div className="sidebar-bottom"><Link to="/dashboard/profile"><CircleUserRound size={18} /> Profile settings</Link><button onClick={async () => { await signOutAccount(); navigate('/'); }}><LogOut size={18} /> Sign out</button></div>
+      <div className="sidebar-bottom"><Link to={account.role === 'admin' ? '/admin/profile' : '/dashboard/profile'}><CircleUserRound size={18} /> Profile settings</Link><button onClick={async () => { await signOutAccount(); navigate('/'); }}><LogOut size={18} /> Sign out</button></div>
     </aside>
     <div className="dashboard-main"><header className="dashboard-topbar"><button className="dashboard-menu" onClick={() => setMobile(true)}><Menu size={21} /></button><div className="dashboard-search"><Search size={17} /><input placeholder="Search your workspace" /></div><div className="topbar-actions"><Link className="notification-button" aria-label="Notifications" to="/dashboard/notifications"><Bell size={19} />{unreadNotifications > 0 && <span>{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}</Link><div className="account-chip"><span className="account-avatar">{account.name.slice(0, 1)}</span><span><b>{account.name}</b><small>{account.role === 'admin' ? 'Administrator' : 'Marketplace user'}</small></span><ChevronDown size={15} /></div></div></header><main className="dashboard-content">{account.role !== 'admin' && !isProfileComplete(account) && <div className="profile-reminder"><div><b>Complete your profile to unlock selling.</b><span>{[account.name, account.email, account.phone, account.district, account.city].filter(Boolean).length}/5 required details complete. Add your district and city so buyers can trust your listings.</span></div><Link to="/dashboard/profile" className="button button-dark">Complete profile</Link></div>}{children}</main></div>
   </div>
@@ -403,6 +403,11 @@ export function Dashboard() {
   if (authLoading) return <div className="dashboard-loading">Restoring your secure session...</div>
   if (!account) return <Navigate to="/login" replace />
   const admin = account.role === 'admin'
+  // Two dashboards only: customers stay in /dashboard, administrators land in
+  // /admin and cannot open the customer shell by editing the URL.
+  const adminPath = path.startsWith('/admin')
+  if (adminPath && !admin) return <Navigate to="/dashboard" replace />
+  if (!adminPath && admin && path === '/dashboard') return <Navigate to="/admin" replace />
   let content: ReactNode = <Overview />
   if (path.includes('add-listing')) content = <AddListing />
   else if (path.includes('approvals')) content = admin ? <Approvals /> : <Overview />

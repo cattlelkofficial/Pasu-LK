@@ -84,3 +84,28 @@ npm run db:check
 ```
 
 The script applies every migration, in order and then again as the single combined file, to a real PostgreSQL running locally (PGlite) with stand-ins for the Supabase `auth` and `storage` schemas, the `anon`/`authenticated` roles and the `supabase_realtime` publication. It then asserts that the tables, RLS policies, storage bucket and functions exist, exercises the sign-up trigger, checks the first-admin promotion statement, proves that `seller_contact()` returns a phone number only to the listing's owner or an administrator, and switches role to prove that a seller can neither write nor read another seller's verification request. `npm run db:check` also runs the setup idempotency test, which drives `scripts/setup-supabase.mjs` twice against a mock Management API backed by the same database.
+
+## Two dashboards
+
+Customers use `/dashboard` for browsing, selling, saved listings, enquiries,
+messages, transactions and their profile. Administrators use `/admin`, which is
+gated in the client by the account role and enforced in the database by every RLS
+policy through `public.admin_guard()`. A customer who requests `/admin` is
+redirected to `/dashboard`; an administrator who opens `/dashboard` lands on
+`/admin`. Password recovery lives at `/forgot-password` and `/reset-password`.
+
+## Create the first administrator
+
+Run the bootstrap once, from your own shell, with the service-role key exported
+only for that command. The password is typed at the prompt and is never written
+to a file, a log or this repository:
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=... node scripts/bootstrap-admin.mjs
+```
+
+It is idempotent: an existing `cattlelkofficial@gmail.com` account is reused and
+its password updated rather than duplicated, the email is marked confirmed, the
+`admin` role is granted through the profiles table, and the script prints the
+verified role back. Never put the service-role key in `.env.local` or any
+`VITE_` variable: Vite inlines those into the browser bundle.
