@@ -725,9 +725,13 @@ select { cursor:pointer }
    and layout are untouched, and everything stops for reduced motion.
    ------------------------------------------------------------------ */
 @keyframes page-in { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
+@keyframes page-fade { from { opacity:0 } to { opacity:1 } }
 @keyframes rise-in { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
 
 .page-transition { animation:page-in .42s cubic-bezier(.22,.68,.32,1) both }
+/* The dashboard shell only fades: an animated transform there would make the
+   fixed mobile drawer position against the page instead of the viewport. */
+.page-transition-shell { animation:page-fade .42s cubic-bezier(.22,.68,.32,1) both }
 
 .cattle-card, .dashboard-stat, .dashboard-panel, .dashboard-cattle-card, .approval-card, .verification-row {
   animation:rise-in .5s cubic-bezier(.22,.68,.32,1) both;
