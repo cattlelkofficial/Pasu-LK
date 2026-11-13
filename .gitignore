@@ -26,3 +26,6 @@ dist-ssr
 # Local Supabase credentials used only for one-off admin tasks (never committed)
 .supabase-token
 .env.admin.local
+.env
+.env.local
+.env*.local
