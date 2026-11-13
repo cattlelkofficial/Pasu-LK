@@ -218,7 +218,7 @@ em { font-family:var(--serif); font-weight:400 }
 select { border:0; background:transparent; outline:0; color:var(--ink); font-size:13px; appearance:none; padding-right:20px }
 .select-field svg { position:absolute; right:17px; pointer-events:none }
 .filter-button { display:flex; align-items:center; gap:8px; padding:15px 18px; border:0; border-left:1px solid var(--line); background:#f6f5f0; font-size:13px }
-.results-head { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; margin-bottom:22px }
+.results-head { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; margin:16px 0 22px }
 .results-head b { color:var(--ink) }
 .results-head label { display:flex; align-items:center; gap:7px }
 .results-head select { font-weight:600 }
@@ -854,7 +854,7 @@ html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var
 .filter-search { flex-shrink:0 }
 .filter-panel {
   display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
-  gap:14px; margin-top:16px; padding-top:18px; border-top:1px solid var(--line)
+  gap:14px; margin-top:0; padding:18px 18px 6px; border-top:1px solid var(--line)
 }
 .filter-panel label { display:flex; flex-direction:column; gap:6px; font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600 }
 .filter-panel input, .filter-panel select {
@@ -863,7 +863,7 @@ html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var
 }
 .filter-panel input:focus, .filter-panel select:focus { outline:2px solid rgba(200,109,77,.35); outline-offset:1px }
 .filter-panel-actions { display:flex; align-items:center; justify-content:flex-end; gap:16px; grid-column:1/-1 }
-.filter-chips { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:16px }
+.filter-chips { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:14px; padding:0 18px 16px }
 .filter-chip {
   display:inline-flex; align-items:center; gap:7px; padding:6px 10px;
   border:1px solid var(--line); border-radius:999px; background:var(--cream);
@@ -876,9 +876,34 @@ html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var
 .market-placeholder { padding:48px 0; text-align:center; color:var(--muted); font-size:12px }
 .load-more { display:flex; justify-content:center; margin-top:32px }
 @media(max-width:600px) {
-  .filter-bar { flex-direction:column; align-items:stretch }
   .filter-panel { grid-template-columns:1fr 1fr }
   .filter-panel-actions { justify-content:space-between }
+}
+
+/* Filter bar dressing. The bar owns the border, so the controls inside it
+   must not draw their own boxes: the selects sit flush as divided segments
+   instead of looking like loose fields stacked in a row. */
+.filter-bar > .searchable-control { flex:0 0 auto; min-width:150px; display:flex; align-self:stretch }
+.filter-bar > .searchable-control .searchable-trigger {
+  border:0; border-left:1px solid var(--line); border-radius:0;
+  min-height:52px; padding:0 16px; background:transparent
+}
+.filter-search { min-height:52px; border-radius:0 }
+
+/* Below the desktop breakpoint the bar becomes a grid: search and both selects
+   full width, then Search and Filters side by side. Without this the old
+   display:block rule left an 83px Search button stranded on its own line. */
+@media(max-width:900px) {
+  .filter-bar { display:grid; grid-template-columns:1fr 1fr; align-items:stretch }
+  .filter-bar > .search-field { grid-column:1 / -1; border-bottom:1px solid var(--line) }
+  .filter-bar > .searchable-control { grid-column:1 / -1; min-width:0 }
+  .filter-bar > .searchable-control .searchable-trigger {
+    border-left:0; border-bottom:1px solid var(--line); min-height:48px;
+    padding:0 18px; justify-content:space-between
+  }
+  .filter-search, .filter-button { width:100%; justify-content:center; min-height:54px; border-left:0 }
+  .filter-search { border-bottom:1px solid var(--line) }
+  .filter-chips { margin-top:14px }
 }
 
 /* Listings without photos still need a calm, intentional card image. */
