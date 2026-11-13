@@ -19,7 +19,7 @@ import { getMyVerificationState, listVerificationRequests, requestVerification, 
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from './components/lightswind/breadcrumb'
 import { Progress } from './components/lightswind/progress'
 import { ReasonDialog } from './components/ReasonDialog'
-import { toast } from './hooks/use-toast'
+import { notify } from './lib/notify'
 import { ScrollArea } from './components/lightswind/scroll-area'
 import { Skeleton } from './components/lightswind/skeleton'
 import { SearchableDropdown } from './components/FormControls'
@@ -192,11 +192,11 @@ function Approvals() {
     try {
       await reviewListing(id, decision, reason)
       setRows(previous => previous.filter(row => row.id !== id))
-      toast({ title: decision === 'approved' ? 'Listing approved' : 'Listing rejected', description: decision === 'approved' ? 'It is live in the marketplace now.' : reason, variant: decision === 'approved' ? 'success' : 'default' })
+      notify(decision === 'approved' ? 'Listing approved' : 'Listing rejected', decision === 'approved' ? 'It is live in the marketplace now.' : reason, decision === 'approved' ? 'success' : 'default')
     } catch (issue) {
       const message = issue instanceof Error ? issue.message : 'Listing decision could not be saved.'
       setError(message)
-      toast({ title: 'Decision not saved', description: message, variant: 'destructive' })
+      notify('Decision not saved', message, 'destructive')
     } finally { setBusy('') }
   }
   return <><PageHeading eyebrow="Verification queue" title="Review with confidence." /><ReasonDialog open={Boolean(rejecting)} title="Reject this listing?" description="The seller keeps the listing and sees your reason, so it needs to be specific." confirmLabel="Reject listing" busy={Boolean(busy)} onCancel={() => setRejecting(null)} onConfirm={reason => { const id = rejecting; setRejecting(null); if (id) decide(id, 'rejected', reason) }} /><div className="approval-notice"><ClipboardCheck size={20} /><div><b>{rows.length} listings need your review</b><span>Decisions are stored with administrator identity, timestamp, and reason.</span></div></div>{error && <p className="form-error">{error}</p>}<div className="approval-grid">{rows.length ? rows.map(row => { const image = row.cow_images?.sort((a, b) => Number(b.is_primary) - Number(a.is_primary))[0]?.image_url; return <article className="approval-card" key={row.id}><img src={image || ''} alt="" /><div className="approval-card-copy"><div><span className="status-pill pending">Pending review</span><span className="card-location">{row.district}</span></div><h3>{row.title}</h3><p>{row.breed} · {row.daily_yield_liters}L daily · {formatLkr(row.asking_price_lkr)}</p><small>{row.profiles?.full_name || 'Unknown seller'} · {row.profiles?.is_verified ? 'Verified seller' : 'Seller not verified'}</small><div className="approval-actions"><button className="button button-dark" disabled={busy === row.id} onClick={() => decide(row.id, 'approved')}>{busy === row.id ? 'Saving...' : 'Approve listing'}</button><button className="button button-light" disabled={busy === row.id} onClick={() => setRejecting(row.id)}>Reject</button></div></div></article> }) : <div className="empty-state"><Check size={27} /><h3>Approval queue is clear</h3><p>New pending listings will appear here.</p></div>}</div></>
@@ -365,11 +365,11 @@ function Users() {
     try {
       await setUserSuspension(String(row.id), next, next ? reason : undefined)
       setRows(previous => previous.map(item => item.id === row.id ? { ...item, is_suspended: next } : item))
-      toast({ title: next ? 'Account suspended' : 'Account reactivated', description: String(row.full_name || row.email || 'Marketplace user'), variant: next ? 'warning' : 'success' })
+      notify(next ? 'Account suspended' : 'Account reactivated', String(row.full_name || row.email || 'Marketplace user'), next ? 'warning' : 'success')
     } catch (issue) {
       const message = issue instanceof Error ? issue.message : 'Account status could not be updated.'
       setError(message)
-      toast({ title: 'Account not updated', description: message, variant: 'destructive' })
+      notify('Account not updated', message, 'destructive')
     }
   }
   const verify = async (row: Record<string, unknown>) => { const next = !row.is_verified; try { await setSellerVerification(String(row.id), next); setRows(previous => previous.map(item => item.id === row.id ? { ...item, is_verified: next } : item)) } catch (issue) { setError(issue instanceof Error ? issue.message : 'Seller verification could not be updated.') } }
@@ -395,11 +395,11 @@ function VerificationQueue() {
     try {
       await reviewSellerVerification(row.id, decision, reason)
       setRows(previous => previous.filter(item => item.id !== row.id))
-      toast({ title: decision === 'approved' ? 'Seller verified' : 'Verification declined', description: decision === 'approved' ? 'Their listings now carry the verified badge.' : reason, variant: decision === 'approved' ? 'success' : 'default' })
+      notify(decision === 'approved' ? 'Seller verified' : 'Verification declined', decision === 'approved' ? 'Their listings now carry the verified badge.' : reason, decision === 'approved' ? 'success' : 'default')
     } catch (issue) {
       const message = issue instanceof Error ? issue.message : 'Verification decision could not be saved.'
       setError(message)
-      toast({ title: 'Decision not saved', description: message, variant: 'destructive' })
+      notify('Decision not saved', message, 'destructive')
     } finally { setBusy('') }
   }
   return <><PageHeading eyebrow="Seller verification" title="Trust, checked in person." /><ReasonDialog open={Boolean(rejecting)} title="Decline this verification?" description="Say what the seller still needs to provide before they can be verified." confirmLabel="Decline verification" busy={Boolean(busy)} onCancel={() => setRejecting(null)} onConfirm={reason => { const row = rejecting; setRejecting(null); if (row) decide(row, 'rejected', reason) }} /><div className="approval-notice"><BadgeCheck size={20} /><div><b>{rows.length} sellers waiting for verification</b><span>Approving sets the verified badge on every listing that seller owns.</span></div></div>{error && <p className="form-error">{error}</p>}<div className="dashboard-panel verification-list">{loading ? [0, 1, 2].map(index => <div className="verification-row" key={index}><Skeleton variant="circle" width={44} height={44} /><div className="verification-body"><Skeleton width="38%" height={14} /><div className="skeleton-gap" /><Skeleton width="62%" height={11} /></div></div>) : rows.length ? rows.map(row => { const seller = sellerOf(row); const note = verificationNote(row.documents); return <div className="verification-row" key={row.id}><span className="verification-avatar">{(seller?.full_name || 'P').slice(0, 1)}</span><div className="verification-body"><div className="verification-head"><b>{seller?.full_name || 'Unnamed seller'}</b><span className="status-pill pending">{seller?.is_verified ? 'Already verified' : 'Pending'}</span></div><small className="table-muted">{seller?.email || 'No email on file'} · {seller?.district || 'Unknown district'} · requested {new Date(row.created_at).toLocaleDateString('en-LK')}</small>{note && <p className="verification-note">{note}</p>}<div className="verification-actions"><button className="button button-dark table-action" disabled={busy === row.id} onClick={() => decide(row, 'approved')}>{busy === row.id ? 'Saving...' : 'Approve seller'}</button><button className="button button-light table-action" disabled={busy === row.id} onClick={() => setRejecting(row)}>Reject</button></div></div></div> }) : <div className="empty-state"><Check size={27} /><h3>No requests waiting</h3><p>Sellers who ask to be verified will appear here.</p></div>}</div></>

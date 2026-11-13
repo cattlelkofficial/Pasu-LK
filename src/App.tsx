@@ -18,13 +18,10 @@ import { Badge } from './components/lightswind/badge'
 import { Card } from './components/lightswind/card'
 import { Button } from './components/lightswind/button'
 import { Alert, AlertDescription, AlertTitle } from './components/lightswind/alert'
-import {
-  Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
-} from './components/lightswind/pagination'
-import { Skeleton } from './components/lightswind/skeleton'
 import { Toaster } from './components/lightswind/toaster'
 import { Tooltip } from './components/lightswind/tooltip'
-import { toast } from './hooks/use-toast'
+import { ListingSkeletonGrid, MarketPagination } from './components/MarketplaceParts'
+import { notify } from './lib/notify'
 
 function Logo() {
   return <Link to="/" className="logo" aria-label="Pasu home"><span className="logo-mark"><Leaf size={17} strokeWidth={2.5} /></span><span>Pasu</span></Link>
@@ -72,12 +69,12 @@ function CattleCard({ cow }: { cow: Cattle }) {
     setSaved(!previous)
     try {
       await toggleFavourite(cow.id, previous)
-      toast({ title: previous ? 'Removed from saved' : 'Saved to your list', description: cow.title, variant: 'success', duration: 3000 })
+      notify(previous ? 'Removed from saved' : 'Saved to your list', cow.title, 'success')
     } catch (error) {
       setSaved(previous)
       const message = error instanceof Error ? error.message : 'Unable to save this listing.'
       setSaveError(message)
-      toast({ title: 'Could not update saved cattle', description: message, variant: 'destructive' })
+      notify('Could not update saved cattle', message, 'destructive')
     }
   }
   return <Card className="cattle-card" hoverable={false} bordered={false}>
@@ -246,6 +243,7 @@ function Marketplace() {
   const page = Math.min(pageCount, Math.max(1, Math.floor((visible - 1) / pageSize) + 1))
   const goToPage = (next: number) => setVisible(Math.min(pageCount, Math.max(1, next)) * pageSize)
   const shown = sorted.slice((page - 1) * pageSize, page * pageSize)
+  const rangeLabel = sorted.length ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, sorted.length)}` : '0'
   const chips = marketFilterChips(applied)
   const loading = catalog === null
 
@@ -254,16 +252,12 @@ function Marketplace() {
     {catalogError && <Alert className="catalog-alert"><AlertTitle>Search is temporarily unavailable</AlertTitle><AlertDescription>{catalogError}</AlertDescription></Alert>}
     <FilterBar filters={filters} setFilter={setFilter} breedOptions={breedOptions} panelOpen={panelOpen} setPanelOpen={setPanelOpen} onSearch={runSearch} onClear={() => { setFilters({ ...emptyMarketFilters }); setApplied({ ...emptyMarketFilters }); setPanelOpen(false) }} />
     <div className="results-head" aria-busy={refreshing}>
-      <span>{loading ? 'Loading approved cattle…' : <><b>{sorted.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, sorted.length)}</b> of {sorted.length} cattle shown{chips.length ? '' : ' across all districts and breeds'}{refreshing && <em className="results-refreshing">Updating…</em>}</>}</span>
+      <span>{loading ? 'Loading approved cattle…' : <><b>{rangeLabel}</b> of {sorted.length} cattle shown{chips.length ? '' : ' across all districts and breeds'}{refreshing && <em className="results-refreshing">Updating…</em>}</>}</span>
       <label>Sort by <select value={sort} onChange={event => setSort(event.target.value)}><option value="newest">Newest first</option><option value="price-low">Lowest price</option><option value="price-high">Highest price</option><option value="milk">Highest milk yield</option></select><ChevronDown size={15} /></label>
     </div>
-    {loading ? <div className="cattle-grid marketplace-grid" aria-busy="true">{Array.from({ length: 6 }).map((_, index) => <div className="cattle-card skeleton-card" key={index}><Skeleton className="skeleton-image" /><div className="card-content"><Skeleton className="skeleton-line skeleton-line-lg" /><Skeleton className="skeleton-line skeleton-line-sm" /><div className="card-footer"><Skeleton className="skeleton-line skeleton-line-sm" /><Skeleton className="skeleton-line skeleton-line-md" /></div></div></div>)}</div> : sorted.length ? <>
+    {loading ? <ListingSkeletonGrid /> : sorted.length ? <>
       <div className="cattle-grid marketplace-grid">{shown.map(cow => <CattleCard key={cow.id} cow={cow} />)}</div>
-      {pageCount > 1 && <Pagination className="market-pagination"><PaginationContent>
-        <PaginationItem><PaginationPrevious href="#" className={page === 1 ? 'pagination-disabled' : ''} onClick={event => { event.preventDefault(); goToPage(page - 1) }} /></PaginationItem>
-        {Array.from({ length: pageCount }, (_, index) => index + 1).map(number => <PaginationItem key={number}><PaginationLink href="#" isActive={number === page} onClick={event => { event.preventDefault(); goToPage(number) }}>{number}</PaginationLink></PaginationItem>)}
-        <PaginationItem><PaginationNext href="#" className={page === pageCount ? 'pagination-disabled' : ''} onClick={event => { event.preventDefault(); goToPage(page + 1) }} /></PaginationItem>
-      </PaginationContent></Pagination>}
+      <MarketPagination page={page} pageCount={pageCount} onPage={goToPage} />
     </> : <Card className="empty-state marketplace-empty" bordered><Badge variant="info" withDot dotColor="#c86d4d">Live catalog</Badge><Search size={28} /><h3>{chips.length ? 'No cattle match these filters' : 'No approved cattle yet'}</h3><p>{chips.length ? 'Try removing a filter or widening your price and milk range.' : 'Approved listings will appear here after an administrator checks the details.'}</p><Button variant="unstyled" size="unstyled" className="button button-light" onClick={() => { setFilters({ ...emptyMarketFilters }); setApplied({ ...emptyMarketFilters }); setPanelOpen(false) }}>Clear filters</Button></Card>}
   </div></main><Footer /></>
 }

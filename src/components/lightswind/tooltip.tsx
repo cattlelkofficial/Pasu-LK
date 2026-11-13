@@ -273,7 +273,11 @@ const TooltipContentDisplay = () => {
     if (!contentRef.current || !triggerRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    const contentRect = contentRef.current.getBoundingClientRect();
+    // Layout size, not the visual rect: the tooltip enters with a scale, and a
+    // getBoundingClientRect call during that animation reports the shrunken box,
+    // which throws the position off by the difference.
+    const contentWidth = contentRef.current.offsetWidth;
+    const contentHeight = contentRef.current.offsetHeight;
 
     let x = 0;
     let y = 0;
@@ -281,13 +285,13 @@ const TooltipContentDisplay = () => {
 
     switch (side) {
       case "top":
-        y = triggerRect.top - contentRect.height - sideOffset;
+        y = triggerRect.top - contentHeight - sideOffset;
         break;
       case "bottom":
         y = triggerRect.bottom + sideOffset;
         break;
       case "left":
-        x = triggerRect.left - contentRect.width - sideOffset;
+        x = triggerRect.left - contentWidth - sideOffset;
         break;
       case "right":
         x = triggerRect.right + sideOffset;
@@ -300,10 +304,10 @@ const TooltipContentDisplay = () => {
           x = triggerRect.left;
           break;
         case "end":
-          x = triggerRect.right - contentRect.width;
+          x = triggerRect.right - contentWidth;
           break;
         default:
-          x = triggerRect.left + triggerRect.width / 2 - contentRect.width / 2;
+          x = triggerRect.left + triggerRect.width / 2 - contentWidth / 2;
           break;
       }
     } else {
@@ -312,27 +316,31 @@ const TooltipContentDisplay = () => {
           y = triggerRect.top;
           break;
         case "end":
-          y = triggerRect.bottom - contentRect.height;
+          y = triggerRect.bottom - contentHeight;
           break;
         default:
-          y = triggerRect.top + triggerRect.height / 2 - contentRect.height / 2;
+          y = triggerRect.top + triggerRect.height / 2 - contentHeight / 2;
           break;
       }
     }
 
     const padding = 8;
     if (x < padding) x = padding;
-    if (x + contentRect.width > window.innerWidth - padding)
-      x = window.innerWidth - contentRect.width - padding;
+    if (x + contentWidth > window.innerWidth - padding)
+      x = window.innerWidth - contentWidth - padding;
     if (y < padding) y = padding;
-    if (y + contentRect.height > window.innerHeight - padding)
-      y = window.innerHeight - contentRect.height - padding;
+    if (y + contentHeight > window.innerHeight - padding)
+      y = window.innerHeight - contentHeight - padding;
 
     setPosition({ x, y });
   }, [config, triggerRef]);
 
-  React.useEffect(() => {
+  // A layout effect measures the content in the same commit it mounts, so the
+  // first painted frame is already in place. The rAF below is a second pass for
+  // late layout changes, and scroll/resize keep it attached afterwards.
+  React.useLayoutEffect(() => {
     if (open) {
+      updatePosition();
       const id = requestAnimationFrame(updatePosition);
       window.addEventListener("resize", updatePosition);
       window.addEventListener("scroll", updatePosition, true);
