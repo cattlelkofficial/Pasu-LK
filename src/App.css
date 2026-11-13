@@ -213,10 +213,7 @@ em { font-family:var(--serif); font-weight:400 }
 .filter-bar { background:#fff; border:1px solid var(--line); display:flex; align-items:center; margin-bottom:23px }
 .search-field { display:flex; align-items:center; gap:10px; flex:1; padding:0 18px; color:var(--muted) }
 .search-field input { border:0; outline:0; background:transparent; padding:16px 0; width:100%; font-size:13px }
-.select-field { display:flex; align-items:center; gap:8px; padding:0 18px; border-left:1px solid var(--line); position:relative }
-.select-field span { font-size:11px; color:var(--muted) }
 select { border:0; background:transparent; outline:0; color:var(--ink); font-size:13px; appearance:none; padding-right:20px }
-.select-field svg { position:absolute; right:17px; pointer-events:none }
 .filter-button { display:flex; align-items:center; gap:8px; padding:15px 18px; border:0; border-left:1px solid var(--line); background:#f6f5f0; font-size:13px }
 .results-head { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; margin:16px 0 22px }
 .results-head b { color:var(--ink) }
@@ -303,10 +300,6 @@ select { border:0; background:transparent; outline:0; color:var(--ink); font-siz
   .market-hero { display:block; margin-bottom:32px }
   .market-hero h1 { font-size:50px }
   .market-intro { margin:24px 0 0 }
-  .filter-bar { display:block }
-  .search-field { border-bottom:1px solid var(--line) }
-  .select-field { height:48px; border:0; border-bottom:1px solid var(--line); justify-content:space-between }
-  .filter-button { width:100%; justify-content:center; border:0 }
   .results-head { align-items:start; gap:10px; flex-direction:column }
   .detail-page { padding-top:25px }
   .detail-grid { display:block }
@@ -726,17 +719,23 @@ select { cursor:pointer }
    Motion layer: entrance, hover and press feedback. Palette, spacing
    and layout are untouched, and everything stops for reduced motion.
    ------------------------------------------------------------------ */
-@keyframes page-in { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
-@keyframes page-fade { from { opacity:0 } to { opacity:1 } }
-@keyframes rise-in { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
+/* Entrance motion moves content, it never fades it. An opacity keyframe is
+   exactly what strands cards half-faded when the browser suspends animations (a
+   hidden, occluded or prerendered tab): the animation never reaches its end
+   frame, and the fill mode pins every card at the start frame. Position-only
+   keyframes cannot leave anything invisible, and `backwards` still holds the
+   offset during the stagger delay. */
+@keyframes page-in { from { transform:translateY(8px) } to { transform:none } }
+@keyframes rise-in { from { transform:translateY(14px) } to { transform:none } }
 
-.page-transition { animation:page-in .42s cubic-bezier(.22,.68,.32,1) both }
-/* The dashboard shell only fades: an animated transform there would make the
-   fixed mobile drawer position against the page instead of the viewport. */
-.page-transition-shell { animation:page-fade .42s cubic-bezier(.22,.68,.32,1) both }
+.page-transition { animation:page-in .42s cubic-bezier(.22,.68,.32,1) backwards }
+/* The dashboard shell takes no entrance: a transform there would make the fixed
+   mobile drawer position against the page instead of the viewport, and it has no
+   opacity left to fade. */
+.page-transition-shell { animation:none }
 
 .cattle-card, .dashboard-stat, .dashboard-panel, .dashboard-cattle-card, .approval-card, .verification-row {
-  animation:rise-in .5s cubic-bezier(.22,.68,.32,1) both;
+  animation:rise-in .5s cubic-bezier(.22,.68,.32,1) backwards;
   transition:transform .25s cubic-bezier(.22,.68,.32,1), box-shadow .25s, border-color .25s
 }
 .cattle-card:nth-child(2), .dashboard-stat:nth-child(2), .verification-row:nth-child(2) { animation-delay:.05s }
