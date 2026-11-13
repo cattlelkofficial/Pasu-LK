@@ -887,3 +887,7 @@ html { scrollbar-width:thin; scrollbar-color:hsl(var(--scrollbar-thumb)) hsl(var
   gap:8px; width:100%; height:100%; min-height:180px;
   background:var(--cream); color:var(--muted); font-size:11px; letter-spacing:.04em
 }
+.results-refreshing {
+  margin-left:10px; font-style:normal; font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--muted)
+}

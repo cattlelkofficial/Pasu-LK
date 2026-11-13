@@ -81,6 +81,17 @@ export async function fetchApprovedCattle(): Promise<Cattle[] | null> {
   return (data as ListingRow[]).map(toCattle)
 }
 
+// PostgREST parses the inside of an `or` filter itself, so a term containing a
+// comma, parenthesis, double quote or LIKE wildcard made the whole request fail
+// with a 400 and the marketplace went blank. Keep the words the buyer typed and
+// drop the filter syntax.
+function searchPattern(term: string) {
+  return term
+    .replace(/[%_\\,()"'*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export async function searchApprovedCattle(filters: {
   query?: string
   district?: string
@@ -97,7 +108,10 @@ export async function searchApprovedCattle(filters: {
   let request = supabase.from('cow_listings')
     .select(LISTING_COLUMNS)
     .eq('listing_status', 'approved')
-  if (filters.query) request = request.or(`title.ilike.%${filters.query}%,breed.ilike.%${filters.query}%,city.ilike.%${filters.query}%`)
+  const term = filters.query ? searchPattern(filters.query) : ''
+  // Quoted values keep PostgREST from reading the pattern as syntax. A term made
+  // entirely of punctuation is ignored rather than turning into a broken filter.
+  if (term) request = request.or(`title.ilike."%${term}%",breed.ilike."%${term}%",city.ilike."%${term}%",district.ilike."%${term}%"`)
   if (filters.district) request = request.eq('district', filters.district)
   if (filters.city) request = request.ilike('city', `%${filters.city}%`)
   if (filters.breed) request = request.eq('breed', filters.breed)

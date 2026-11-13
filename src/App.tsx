@@ -161,57 +161,81 @@ function FilterBar({ filters, setFilter, breedOptions, panelOpen, setPanelOpen, 
 
 function Marketplace() {
   const params = new URLSearchParams(window.location.search)
-  const [filters, setFilters] = useState<MarketFilters>({ ...emptyMarketFilters, query: params.get('q') || '', district: params.get('district') || '' })
+  const initialFilters: MarketFilters = { ...emptyMarketFilters, query: params.get('q') || '', district: params.get('district') || '' }
+  const [filters, setFilters] = useState<MarketFilters>(initialFilters)
+  // `applied` is what the query actually runs with. Typing updates the input
+  // immediately while the request waits for a short pause, so a search for
+  // "Friesian" fires one query instead of eight.
+  const [applied, setApplied] = useState<MarketFilters>(initialFilters)
   const [panelOpen, setPanelOpen] = useState(false)
   const [catalog, setCatalog] = useState<Cattle[] | null>(() => (supabase ? null : cattle))
   const [catalogError, setCatalogError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
   const [sort, setSort] = useState('newest')
   const [visible, setVisible] = useState(6)
 
   const setFilter = (key: keyof MarketFilters, value: string) => setFilters(previous => ({ ...previous, [key]: value }))
 
-  // Approved listings only, filtered in the database when Supabase is configured
-  // and against the preview catalogue otherwise.
+  useEffect(() => {
+    const timer = setTimeout(() => setApplied(filters), 300)
+    return () => clearTimeout(timer)
+  }, [filters])
+
+  const runSearch = () => { setApplied(filters); setVisible(6); setPanelOpen(false) }
+
+  // Approved listings only, filtered in the database when Supabase is
+  // configured and against the preview catalogue otherwise. Earlier results stay
+  // on screen while a new query runs so the grid never flashes empty.
   useEffect(() => {
     setVisible(6)
     if (!supabase) {
-      setCatalog(cattle.filter(cow => matchesMarketFilters(cow, filters)))
+      setCatalog(cattle.filter(cow => matchesMarketFilters(cow, applied)))
       return
     }
     let active = true
-    setCatalog(null)
+    setRefreshing(true)
     searchApprovedCattle({
-      query: filters.query.trim() || undefined,
-      district: filters.district || undefined,
-      breed: filters.breed || undefined,
-      gender: filters.gender || undefined,
-      minPrice: numberOrUndefined(filters.minPrice),
-      maxPrice: numberOrUndefined(filters.maxPrice),
-      minYield: numberOrUndefined(filters.minYield),
-      maxAgeMonths: filters.maxAge ? Number(filters.maxAge) * 12 : undefined,
+      query: applied.query.trim() || undefined,
+      district: applied.district || undefined,
+      breed: applied.breed || undefined,
+      gender: applied.gender || undefined,
+      minPrice: numberOrUndefined(applied.minPrice),
+      maxPrice: numberOrUndefined(applied.maxPrice),
+      minYield: numberOrUndefined(applied.minYield),
+      maxAgeMonths: applied.maxAge ? Number(applied.maxAge) * 12 : undefined,
     })
-      .then(rows => { if (active) { setCatalog(rows || []); setCatalogError('') } })
-      .catch(() => { if (active) { setCatalog([]); setCatalogError('Live listings are temporarily unavailable. Please try again shortly.') } })
+      .then(rows => {
+        if (!active) return
+        setCatalog(rows || [])
+        setCatalogError('')
+      })
+      .catch(() => {
+        if (!active) return
+        setCatalog(previous => previous ?? [])
+        setCatalogError('Search is temporarily unavailable. Your last results are still shown.')
+      })
+      .finally(() => { if (active) setRefreshing(false) })
     return () => { active = false }
-  }, [filters])
+  }, [applied])
 
   const breedOptions = useMemo(() => [...new Set([...cattle.map(cow => cow.breed), ...(catalog || []).map(cow => cow.breed)])].sort(), [catalog])
   const sorted = useMemo(() => [...(catalog || [])].sort((a, b) => sort === 'price-low' ? a.price - b.price : sort === 'price-high' ? b.price - a.price : sort === 'milk' ? b.dailyYield - a.dailyYield : 0), [catalog, sort])
   const shown = sorted.slice(0, visible)
-  const chips = marketFilterChips(filters)
+  const chips = marketFilterChips(applied)
+  const loading = catalog === null
 
   return <><Navbar /><main className="marketplace-page"><div className="container">
     <div className="market-hero"><div><p className="eyebrow">The Pasu marketplace</p><h1>Explore cattle.<br /><em>Find your next one.</em></h1></div><p className="market-intro">Every approved listing in one place. Search by district, breed, price, age or daily milk yield, then message the farmer directly inside Pasu.</p></div>
     {catalogError && <p className="catalog-notice">{catalogError}</p>}
-    <FilterBar filters={filters} setFilter={setFilter} breedOptions={breedOptions} panelOpen={panelOpen} setPanelOpen={setPanelOpen} onSearch={() => { setVisible(6); setPanelOpen(false) }} onClear={() => { setFilters({ ...emptyMarketFilters }); setPanelOpen(false) }} />
-    <div className="results-head">
-      <span>{catalog === null ? 'Loading approved cattle…' : <><b>{shown.length}</b> of {sorted.length} cattle shown{chips.length ? '' : ' across all districts and breeds'}</>}</span>
+    <FilterBar filters={filters} setFilter={setFilter} breedOptions={breedOptions} panelOpen={panelOpen} setPanelOpen={setPanelOpen} onSearch={runSearch} onClear={() => { setFilters({ ...emptyMarketFilters }); setApplied({ ...emptyMarketFilters }); setPanelOpen(false) }} />
+    <div className="results-head" aria-busy={refreshing}>
+      <span>{loading ? 'Loading approved cattle…' : <><b>{shown.length}</b> of {sorted.length} cattle shown{chips.length ? '' : ' across all districts and breeds'}{refreshing && <em className="results-refreshing">Updating…</em>}</>}</span>
       <label>Sort by <select value={sort} onChange={event => setSort(event.target.value)}><option value="newest">Newest first</option><option value="price-low">Lowest price</option><option value="price-high">Highest price</option><option value="milk">Highest milk yield</option></select><ChevronDown size={15} /></label>
     </div>
-    {catalog === null ? <div className="market-placeholder">Checking the marketplace for approved cattle…</div> : sorted.length ? <>
+    {loading ? <div className="market-placeholder">Checking the marketplace for approved cattle…</div> : sorted.length ? <>
       <div className="cattle-grid marketplace-grid">{shown.map(cow => <CattleCard key={cow.id} cow={cow} />)}</div>
       {shown.length < sorted.length && <div className="load-more"><Button variant="unstyled" size="unstyled" className="button button-dark" onClick={() => setVisible(visible + 6)}>Load more cattle</Button></div>}
-    </> : <Card className="empty-state marketplace-empty" bordered><Badge variant="info" withDot dotColor="#c86d4d">Live catalog</Badge><Search size={28} /><h3>No cattle match these filters</h3><p>{chips.length ? 'Try removing a filter or widening your price and milk range.' : 'Approved listings will appear here after an administrator checks the details.'}</p><Button variant="unstyled" size="unstyled" className="button button-light" onClick={() => { setFilters({ ...emptyMarketFilters }); setPanelOpen(false) }}>Clear filters</Button></Card>}
+    </> : <Card className="empty-state marketplace-empty" bordered><Badge variant="info" withDot dotColor="#c86d4d">Live catalog</Badge><Search size={28} /><h3>{chips.length ? 'No cattle match these filters' : 'No approved cattle yet'}</h3><p>{chips.length ? 'Try removing a filter or widening your price and milk range.' : 'Approved listings will appear here after an administrator checks the details.'}</p><Button variant="unstyled" size="unstyled" className="button button-light" onClick={() => { setFilters({ ...emptyMarketFilters }); setApplied({ ...emptyMarketFilters }); setPanelOpen(false) }}>Clear filters</Button></Card>}
   </div></main><Footer /></>
 }
 
